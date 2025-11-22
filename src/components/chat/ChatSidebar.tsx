@@ -9,6 +9,11 @@ import { useSettingsStore } from '@/store/settings-store';
 import { cn } from '@/lib/utils';
 import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
 // Color names for display
 const COLOR_NAMES: Record<string, string> = {
@@ -683,7 +688,14 @@ export function ChatSidebar() {
                       : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
                   )}
                 >
-                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  <div className="text-sm prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-headings:my-2">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm, remarkMath]}
+                      rehypePlugins={[rehypeKatex]}
+                    >
+                      {message.content}
+                    </ReactMarkdown>
+                  </div>
                   <p
                     className={cn(
                       'text-xs mt-1',
