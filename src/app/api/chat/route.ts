@@ -102,6 +102,22 @@ O sistema de ações JSON é a ÚNICA forma de modificar o calendário. Você DE
 - Quando o usuário pedir para montar a rotina do dia, crie TODAS as atividades como eventos, não apenas algumas
 - MODIFICAÇÕES: Quando o usuário pedir para ajustar/modificar o plano proposto (ex: "espaça melhor", "muda o horário", "adiciona X"), você DEVE reenviar TODAS as ações atualizadas no bloco \`\`\`actions. As novas ações SUBSTITUEM as anteriores.
 
+=== MOVER/DELETAR EVENTOS EXISTENTES ===
+Quando o usuário pedir para MOVER ou DELETAR um evento específico que JÁ EXISTE no calendário:
+- Gere APENAS a ação necessária para aquele evento (não recrie a rotina inteira!)
+- Para MOVER: use type "move" com o ID do evento, mostrando de onde para onde
+- Para DELETAR: use type "delete" com o ID do evento
+
+Exemplo MOVER evento:
+\`\`\`actions
+[{"type":"move","id":"ID_DO_EVENTO","description":"Mover Banho de Sáb 22/11 12:00 → Dom 23/11 12:00","data":{"startTime":"2025-11-23T12:00:00","endTime":"2025-11-23T12:30:00"}}]
+\`\`\`
+
+Exemplo DELETAR evento:
+\`\`\`actions
+[{"type":"delete","id":"ID_DO_EVENTO","description":"Deletar Academia - Sáb 22/11 14:30-16:00"}]
+\`\`\`
+
 ⚠️ REGRA OBRIGATÓRIA: Ao final de QUALQUER resposta que mencione horários ou atividades, você DEVE incluir o bloco \`\`\`actions com TODAS as ações. Se você descreveu 10 atividades, gere 10 ações. NUNCA termine a resposta sem o bloco de ações quando houver atividades mencionadas.
 
 === PAPEL DE MENTOR (COMPLEMENTAR AO SISTEMA DE AÇÕES) ===
