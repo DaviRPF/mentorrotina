@@ -34,60 +34,47 @@ export async function POST(request: NextRequest) {
       ? memories.map((m: { id: string; content: string }, i: number) => `[${m.id}] ${m.content}`).join('\n')
       : '(nenhuma memória registrada)';
 
-    const prompt = `Analise a mensagem do usuário e identifique informações PESSOAIS sobre ele que devem ser salvas como "memórias".
+    const prompt = `Você é um extrator de informações pessoais. Analise a mensagem e EXTRAIA TODAS as informações úteis sobre o usuário.
 
-MEMÓRIAS EXISTENTES:
+MEMÓRIAS JÁ SALVAS:
 ${memoriesContext}
 
-MENSAGEM DO USUÁRIO:
+MENSAGEM PARA ANALISAR:
 "${message}"
 
-EXEMPLOS DO QUE DEVE SER SALVO:
-- "meu whey tem 15g de proteína por scoop" → criar: "Whey protein tem 15g de proteína por scoop"
-- "prefiro consumir proteína espaçada ao longo do dia" → criar: "Prefere consumir proteína espaçada ao longo do dia"
-- "acordo às 7h" → criar: "Costuma acordar às 7h"
-- "tenho TDAH" → criar: "Tem TDAH"
-- "trabalho com marketing" → criar: "Trabalha com marketing"
-- "minha meta é 166g de proteína" → criar: "Meta diária de proteína: 166g"
+VOCÊ DEVE EXTRAIR:
+- Preferências ("quero X espaçado", "prefiro Y") → SALVAR
+- Detalhes de produtos ("meu whey tem X gramas", "meu scoop tem Y") → SALVAR
+- Características pessoais (peso, altura, condições) → SALVAR
+- Hábitos e rotinas ("acordo às X", "treino Y vezes") → SALVAR
+- Metas e objetivos numéricos → SALVAR
 
-REGRAS:
-1. Memórias são FATOS sobre o usuário: preferências, características, hábitos, condições de saúde, detalhes de produtos que usa, estratégias que prefere, horários habituais, etc.
-2. NÃO são memórias: pedidos diretos ("cria um evento"), perguntas, eventos únicos do calendário
-3. Cada memória deve ser uma informação ATÔMICA (um fato por memória)
-4. Se a mensagem contém info que ATUALIZA uma memória existente → type: "update"
-5. Se a mensagem CONTRADIZ uma memória existente → type: "update"
-6. Se é info NOVA sobre o usuário → type: "create"
-7. Se uma memória ficou obsoleta/incorreta → type: "delete"
-8. Uma mensagem pode gerar 0, 1 ou VÁRIAS ações
-9. IMPORTANTE: Seja proativo! Se o usuário mencionar qualquer detalhe útil sobre sua vida, preferências ou rotina, salve como memória
+EXEMPLOS DE EXTRAÇÃO:
+Mensagem: "meus scoops de proteina no talo tem 15g"
+→ Criar: "Scoop de whey protein cheio tem 15g de proteína"
 
-FORMATO DE RESPOSTA (JSON array):
+Mensagem: "quero o consumo de proteina espaçado"
+→ Criar: "Prefere consumir proteína de forma espaçada ao longo do dia"
+
+Mensagem: "tenho que consumir 166g de proteina"
+→ Criar: "Meta diária de proteína: 166g"
+
+NÃO EXTRAIR:
+- Pedidos de ação ("cria evento", "faz meu dia")
+- Perguntas
+- Informações já salvas nas memórias existentes
+
+FORMATO JSON OBRIGATÓRIO:
 \`\`\`json
 [
-  {
-    "type": "create",
-    "newContent": "Texto da nova memória",
-    "reason": "Por que criar"
-  },
-  {
-    "type": "update",
-    "memoryId": "id-da-memoria-existente",
-    "currentContent": "Conteúdo atual da memória",
-    "newContent": "Novo conteúdo atualizado",
-    "reason": "Por que atualizar"
-  },
-  {
-    "type": "delete",
-    "memoryId": "id-da-memoria",
-    "currentContent": "Conteúdo que será deletado",
-    "reason": "Por que deletar"
-  }
+  {"type": "create", "newContent": "Fato sobre o usuário", "reason": "Motivo"},
+  {"type": "update", "memoryId": "id", "currentContent": "antigo", "newContent": "novo", "reason": "Motivo"}
 ]
 \`\`\`
 
-Se não houver informações pessoais para salvar, retorne array vazio: []
+Se realmente não houver NADA para extrair, retorne: []
 
-Responda APENAS com o JSON, sem explicações.`;
+RESPONDA APENAS COM O JSON.`;
 
     const response = await fetch(
       `${GEMINI_API_URL}/${model}:generateContent?key=${apiKey}`,
@@ -97,7 +84,7 @@ Responda APENAS com o JSON, sem explicações.`;
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
-            temperature: 0.1,
+            temperature: 0.3,
             maxOutputTokens: 2048,
           },
         }),
