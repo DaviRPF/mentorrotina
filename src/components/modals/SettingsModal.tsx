@@ -1,20 +1,37 @@
 'use client';
 
 import { Modal } from '@/components/ui/Modal';
-import { useSettingsStore, GEMINI_MODELS, GeminiModel, BookSummary } from '@/store/settings-store';
-import { Bot, Calendar, Bell, Palette, RotateCcw, BookOpen, Plus, X, ChevronDown, ChevronUp, Trash2, GraduationCap } from 'lucide-react';
-import { useState } from 'react';
+import { useSettingsStore, GEMINI_MODELS, GeminiModel, BookSummary, TimeContextType, TIME_CONTEXT_LABELS, TIME_CONTEXT_DURATIONS } from '@/store/settings-store';
+import { Bot, Calendar, Bell, Palette, RotateCcw, BookOpen, Plus, ChevronDown, ChevronUp, Trash2, GraduationCap, Target, Clock, Save } from 'lucide-react';
+import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
-type TabId = 'ai' | 'mentor' | 'calendar' | 'appearance' | 'notifications';
+type TabId = 'ai' | 'mentor' | 'goals' | 'calendar' | 'appearance' | 'notifications';
 
 const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'ai', label: 'Inteligência Artificial', icon: <Bot className="w-4 h-4" /> },
   { id: 'mentor', label: 'Orientações', icon: <GraduationCap className="w-4 h-4" /> },
+  { id: 'goals', label: 'Metas', icon: <Target className="w-4 h-4" /> },
   { id: 'calendar', label: 'Calendário', icon: <Calendar className="w-4 h-4" /> },
   { id: 'appearance', label: 'Aparência', icon: <Palette className="w-4 h-4" /> },
   { id: 'notifications', label: 'Notificações', icon: <Bell className="w-4 h-4" /> },
 ];
+
+// Helper to format time remaining
+function formatTimeRemaining(ms: number): string {
+  if (ms <= 0) return 'Expirado';
+
+  const days = Math.floor(ms / (24 * 60 * 60 * 1000));
+  const hours = Math.floor((ms % (24 * 60 * 60 * 1000)) / (60 * 60 * 1000));
+  const minutes = Math.floor((ms % (60 * 60 * 1000)) / (60 * 1000));
+
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  return `${minutes}m`;
+}
+
+// Time context order for display
+const TIME_CONTEXT_ORDER: TimeContextType[] = ['weekly', 'monthly', 'quarterly', 'sixMonth', 'yearly'];
 
 export function SettingsModal() {
   const {
@@ -31,6 +48,10 @@ export function SettingsModal() {
     addBookSummary,
     updateBookSummary,
     removeBookSummary,
+    // Time Contexts
+    timeContexts,
+    updateTimeContext,
+    clearTimeContext,
     // Calendar
     weekStartsOn,
     defaultView,
@@ -60,6 +81,69 @@ export function SettingsModal() {
   const [newBookSummary, setNewBookSummary] = useState('');
   const [expandedBooks, setExpandedBooks] = useState<Set<string>>(new Set());
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  // State for time contexts
+  const [editingContexts, setEditingContexts] = useState<Record<TimeContextType, string>>({
+    weekly: '',
+    monthly: '',
+    quarterly: '',
+    sixMonth: '',
+    yearly: '',
+  });
+  const [contextHasChanges, setContextHasChanges] = useState<Record<TimeContextType, boolean>>({
+    weekly: false,
+    monthly: false,
+    quarterly: false,
+    sixMonth: false,
+    yearly: false,
+  });
+  const [, forceUpdate] = useState(0); // For timer updates
+
+  // Initialize editing contexts from store
+  useEffect(() => {
+    if (timeContexts) {
+      setEditingContexts({
+        weekly: timeContexts.weekly?.content || '',
+        monthly: timeContexts.monthly?.content || '',
+        quarterly: timeContexts.quarterly?.content || '',
+        sixMonth: timeContexts.sixMonth?.content || '',
+        yearly: timeContexts.yearly?.content || '',
+      });
+      setContextHasChanges({
+        weekly: false,
+        monthly: false,
+        quarterly: false,
+        sixMonth: false,
+        yearly: false,
+      });
+    }
+  }, [isSettingsOpen]);
+
+  // Update timer every minute
+  useEffect(() => {
+    const interval = setInterval(() => {
+      forceUpdate(n => n + 1);
+    }, 60000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const handleContextChange = (type: TimeContextType, value: string) => {
+    setEditingContexts(prev => ({ ...prev, [type]: value }));
+    const originalContent = timeContexts?.[type]?.content || '';
+    setContextHasChanges(prev => ({ ...prev, [type]: value !== originalContent }));
+  };
+
+  const handleSaveContext = (type: TimeContextType) => {
+    updateTimeContext(type, editingContexts[type]);
+    setContextHasChanges(prev => ({ ...prev, [type]: false }));
+  };
+
+  const getTimeRemaining = (type: TimeContextType): number | null => {
+    const context = timeContexts?.[type];
+    if (!context?.updatedAt || !context.content.trim()) return null;
+    const elapsed = Date.now() - context.updatedAt;
+    return TIME_CONTEXT_DURATIONS[type] - elapsed;
+  };
 
   const toggleBookExpanded = (bookId: string) => {
     setExpandedBooks(prev => {
@@ -406,6 +490,106 @@ export function SettingsModal() {
                   <strong>Como funciona:</strong> O mentor IA usará estas orientações e conhecimentos dos livros para te dar conselhos
                   personalizados, sugerir melhores horários para suas atividades, te incentivar a manter hábitos
                   e ajudar você a atingir seus objetivos de forma mais eficiente.
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Goals/Time Contexts Tab */}
+          {activeTab === 'goals' && (
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                  Metas e Contextos Temporais
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-4">
+                  Defina seus objetivos para diferentes períodos. O mentor IA usará essas informações para
+                  te ajudar a manter o foco e alcançar suas metas. O cronômetro indica quanto tempo resta do período.
+                </p>
+              </div>
+
+              <div className="space-y-4 max-h-[400px] overflow-y-auto pr-1">
+                {TIME_CONTEXT_ORDER.map((type) => {
+                  const timeRemaining = getTimeRemaining(type);
+                  const isExpired = timeRemaining !== null && timeRemaining <= 0;
+                  const hasContent = editingContexts[type].trim().length > 0;
+
+                  return (
+                    <div
+                      key={type}
+                      className={cn(
+                        'p-3 rounded-lg border transition-colors',
+                        isExpired
+                          ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20'
+                          : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800'
+                      )}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <Target className={cn(
+                            'w-4 h-4',
+                            isExpired ? 'text-red-500' : 'text-blue-500'
+                          )} />
+                          <span className="text-sm font-medium text-gray-900 dark:text-white">
+                            {TIME_CONTEXT_LABELS[type]}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {/* Timer */}
+                          {timeRemaining !== null && (
+                            <div className={cn(
+                              'flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium',
+                              isExpired
+                                ? 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400'
+                                : 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-400'
+                            )}>
+                              <Clock className="w-3 h-3" />
+                              {isExpired ? 'Expirado!' : formatTimeRemaining(timeRemaining)}
+                            </div>
+                          )}
+
+                          {/* Save button */}
+                          {contextHasChanges[type] && (
+                            <button
+                              onClick={() => handleSaveContext(type)}
+                              className="flex items-center gap-1 px-2 py-1 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                            >
+                              <Save className="w-3 h-3" />
+                              Salvar
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      <textarea
+                        value={editingContexts[type]}
+                        onChange={(e) => handleContextChange(type, e.target.value)}
+                        placeholder={`O que você quer realizar neste período ${TIME_CONTEXT_LABELS[type].toLowerCase()}?`}
+                        rows={3}
+                        className={cn(
+                          'w-full px-3 py-2 border rounded-lg text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500',
+                          isExpired
+                            ? 'border-red-200 dark:border-red-800 bg-white dark:bg-gray-800'
+                            : 'border-gray-200 dark:border-gray-600 bg-white dark:bg-gray-800'
+                        )}
+                      />
+
+                      {isExpired && (
+                        <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                          Este período expirou! Atualize suas metas e salve para reiniciar o cronômetro.
+                        </p>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <p className="text-xs text-blue-700 dark:text-blue-400">
+                  <strong>Dica:</strong> Você não precisa preencher todos os períodos. Preencha apenas os que fazem
+                  sentido para você. O mentor IA vai considerar todas as metas que você definir ao te dar conselhos
+                  e sugestões de organização de rotina.
                 </p>
               </div>
             </div>

@@ -182,6 +182,7 @@ export async function POST(request: NextRequest) {
       history = [],
       orientations = '',
       bookSummaries = [],
+      timeContexts = [],
     } = body;
 
     if (!message) {
@@ -216,6 +217,26 @@ ${bookSummaries.map((b: { title: string; summary: string }) => `
 Resumo do usuário (o que ele quer que você foque): ${b.summary}
 → Use TODO seu conhecimento sobre "${b.title}" para dar conselhos mais ricos e completos!
 `).join('\n')}
+`;
+    }
+
+    // Add time contexts (goals for different periods)
+    const timeContextLabels: Record<string, string> = {
+      weekly: 'Semanal (esta semana)',
+      monthly: 'Mensal (este mês)',
+      quarterly: 'Trimestral (próximos 3 meses)',
+      sixMonth: 'Semestral (próximos 6 meses)',
+      yearly: 'Anual (este ano)',
+    };
+
+    if (timeContexts.length > 0) {
+      mentorContext += `
+METAS E OBJETIVOS DO USUÁRIO (use para ajudar a otimizar a rotina e alcançar esses objetivos):
+${timeContexts.map((ctx: { type: string; content: string }) => `
+🎯 ${timeContextLabels[ctx.type] || ctx.type}:
+${ctx.content}
+`).join('\n')}
+→ Considere essas metas ao sugerir eventos e dar conselhos. Ajude o usuário a organizar a rotina para alcançá-las!
 `;
     }
 

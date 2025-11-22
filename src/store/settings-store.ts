@@ -18,6 +18,29 @@ export interface BookSummary {
   summary: string;
 }
 
+export interface TimeContext {
+  content: string;
+  updatedAt: number | null; // timestamp
+}
+
+export type TimeContextType = 'weekly' | 'monthly' | 'quarterly' | 'sixMonth' | 'yearly';
+
+export const TIME_CONTEXT_DURATIONS: Record<TimeContextType, number> = {
+  weekly: 7 * 24 * 60 * 60 * 1000,      // 7 days
+  monthly: 30 * 24 * 60 * 60 * 1000,    // 30 days
+  quarterly: 90 * 24 * 60 * 60 * 1000,  // 90 days
+  sixMonth: 180 * 24 * 60 * 60 * 1000,  // 180 days
+  yearly: 365 * 24 * 60 * 60 * 1000,    // 365 days
+};
+
+export const TIME_CONTEXT_LABELS: Record<TimeContextType, string> = {
+  weekly: 'Semanal',
+  monthly: 'Mensal',
+  quarterly: 'Trimestral',
+  sixMonth: 'Semestral',
+  yearly: 'Anual',
+};
+
 export interface Settings {
   // AI Settings
   geminiModel: GeminiModel;
@@ -26,6 +49,9 @@ export interface Settings {
   // AI Mentor Orientations
   generalOrientations: string;
   bookSummaries: BookSummary[];
+
+  // Time Contexts (goals/plans for different periods)
+  timeContexts: Record<TimeContextType, TimeContext>;
 
   // Calendar Settings
   weekStartsOn: 0 | 1; // 0 = Sunday, 1 = Monday
@@ -62,7 +88,19 @@ interface SettingsStore extends Settings {
   addBookSummary: (title: string, summary: string) => void;
   updateBookSummary: (id: string, title: string, summary: string) => void;
   removeBookSummary: (id: string) => void;
+
+  // Time context actions
+  updateTimeContext: (type: TimeContextType, content: string) => void;
+  clearTimeContext: (type: TimeContextType) => void;
 }
+
+const defaultTimeContexts: Record<TimeContextType, TimeContext> = {
+  weekly: { content: '', updatedAt: null },
+  monthly: { content: '', updatedAt: null },
+  quarterly: { content: '', updatedAt: null },
+  sixMonth: { content: '', updatedAt: null },
+  yearly: { content: '', updatedAt: null },
+};
 
 const defaultSettings: Settings = {
   // AI
@@ -72,6 +110,7 @@ const defaultSettings: Settings = {
   // AI Mentor Orientations
   generalOrientations: '',
   bookSummaries: [],
+  timeContexts: defaultTimeContexts,
 
   // Calendar
   weekStartsOn: 0,
@@ -124,6 +163,23 @@ export const useSettingsStore = create<SettingsStore>()(
 
       removeBookSummary: (id) => set((state) => ({
         bookSummaries: state.bookSummaries.filter((book) => book.id !== id)
+      })),
+
+      updateTimeContext: (type, content) => set((state) => ({
+        timeContexts: {
+          ...state.timeContexts,
+          [type]: {
+            content,
+            updatedAt: content.trim() ? Date.now() : null,
+          },
+        },
+      })),
+
+      clearTimeContext: (type) => set((state) => ({
+        timeContexts: {
+          ...state.timeContexts,
+          [type]: { content: '', updatedAt: null },
+        },
       })),
     }),
     {
