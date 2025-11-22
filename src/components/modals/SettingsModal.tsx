@@ -78,6 +78,8 @@ export function SettingsModal() {
 
   // State for adding/editing book references
   const [isAddingBook, setIsAddingBook] = useState(false);
+  const [isBulkMode, setIsBulkMode] = useState(false);
+  const [bulkTitles, setBulkTitles] = useState('');
   const [editingBookId, setEditingBookId] = useState<string | null>(null);
   const [newBookTitle, setNewBookTitle] = useState('');
   const [newBookTopics, setNewBookTopics] = useState('');
@@ -188,6 +190,23 @@ export function SettingsModal() {
     setEditingBookId(null);
     setNewBookTitle('');
     setNewBookTopics('');
+    setIsAddingBook(false);
+    setIsBulkMode(false);
+    setBulkTitles('');
+  };
+
+  const handleBulkAdd = () => {
+    const titles = bulkTitles
+      .split('\n')
+      .map(t => t.trim())
+      .filter(t => t.length > 0);
+
+    titles.forEach(title => {
+      addBookReference(title, '');
+    });
+
+    setBulkTitles('');
+    setIsBulkMode(false);
     setIsAddingBook(false);
   };
 
@@ -387,22 +406,69 @@ export function SettingsModal() {
                     Livros de Referência
                   </h3>
                   {!isAddingBook && !editingBookId && (
-                    <button
-                      onClick={() => setIsAddingBook(true)}
-                      className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Adicionar livro
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { setIsAddingBook(true); setIsBulkMode(true); }}
+                        className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-800 dark:text-gray-400 font-medium"
+                        title="Adicionar vários livros de uma vez"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Vários
+                      </button>
+                      <button
+                        onClick={() => { setIsAddingBook(true); setIsBulkMode(false); }}
+                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Adicionar
+                      </button>
+                    </div>
                   )}
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  Adicione livros sobre produtividade, hábitos ou desenvolvimento pessoal.
-                  A IA usará TODO o conhecimento que ela tem sobre esses livros para dar conselhos.
+                  A IA usará TODO o conhecimento que ela tem sobre esses livros.
                 </p>
 
-                {/* Add/Edit Book Form */}
-                {(isAddingBook || editingBookId) && (
+                {/* Bulk Add Form */}
+                {isAddingBook && isBulkMode && !editingBookId && (
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 mb-3">
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs text-gray-700 dark:text-gray-300 mb-1">
+                          Títulos dos livros (um por linha)
+                        </label>
+                        <textarea
+                          value={bulkTitles}
+                          onChange={(e) => setBulkTitles(e.target.value)}
+                          placeholder="Atomic Habits&#10;Deep Work&#10;O Poder do Hábito&#10;Essencialismo"
+                          rows={5}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">
+                          {bulkTitles.split('\n').filter(t => t.trim()).length} livro(s)
+                        </p>
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={handleCancelEdit}
+                          className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={handleBulkAdd}
+                          disabled={!bulkTitles.trim()}
+                          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          Adicionar todos
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Single Add/Edit Book Form */}
+                {(isAddingBook && !isBulkMode || editingBookId) && (
                   <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 mb-3">
                     <div className="space-y-3">
                       <div>
@@ -428,7 +494,7 @@ export function SettingsModal() {
                             ) : (
                               <Sparkles className="w-4 h-4" />
                             )}
-                            Gerar tópicos
+                            Gerar
                           </button>
                         </div>
                       </div>

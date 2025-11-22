@@ -22,25 +22,30 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const prompt = `Liste TODOS os capítulos e principais conceitos do livro "${title}".
+    const prompt = `"${title}" - liste capítulos e conceitos-chave.
 
-IMPORTANTE: Liste a estrutura COMPLETA do livro, todos os capítulos do início ao fim.
+REGRAS (economize tokens):
+- SEM artigos (o/a/os/as/um/uma)
+- SEM repetir título do livro
+- SEM introduções ou conclusões textuais
+- Abrevie: Cap=Capítulo, Pt=Parte
+- Conceitos em 2-4 palavras max
+- Use vírgulas ao invés de bullets quando possível
 
-Formato:
-- Parte/Capítulo: Nome
-  • Conceito chave 1
-  • Conceito chave 2
+Formato compacto:
+Pt1: Nome
+Cap1: Nome - conceito1, conceito2, conceito3
+Cap2: Nome - conceito1, conceito2
 
-Exemplo para "Atomic Habits":
-- Introdução: O poder surpreendente dos hábitos atômicos
-- Cap 1: Os 4 Passos para Construir Melhores Hábitos
-  • Deixar óbvio
-  • Tornar atrativo
-  • Facilitar
-  • Tornar satisfatório
-...continue até o final do livro...
+Exemplo "Atomic Habits":
+Pt1: Fundamentos
+Cap1: Poder hábitos pequenos - 1% melhor/dia, agregação ganhos
+Cap2: Identidade molda hábitos - ser>fazer, ciclo feedback
+Pt2: 4 Leis
+Cap3: Deixar óbvio - gatilhos visuais, implementation intentions
+...
 
-Seja direto - apenas a lista, sem explicações. Liste TODOS os capítulos.`;
+Liste TODOS os capítulos, formato compacto.`;
 
     const response = await fetch(
       `${GEMINI_API_URL}/${model}:generateContent?key=${apiKey}`,
