@@ -181,7 +181,7 @@ export async function POST(request: NextRequest) {
       message,
       model = 'gemini-2.5-flash',
       history = [],
-      personalContext = '',
+      memories = [],
       orientations = '',
       bookReferences = [],
       timeContexts = [],
@@ -204,10 +204,10 @@ export async function POST(request: NextRequest) {
     // Build mentor context
     let mentorContext = '';
 
-    if (personalContext.trim()) {
+    if (memories.length > 0) {
       mentorContext += `
-CONTEXTO PESSOAL DO USUÁRIO (informações permanentes, sempre considere):
-${personalContext}
+🧠 MEMÓRIAS SOBRE O USUÁRIO (fatos permanentes, sempre considere):
+${memories.map((m: string) => `• ${m}`).join('\n')}
 `;
     }
 

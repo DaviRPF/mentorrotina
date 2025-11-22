@@ -19,6 +19,13 @@ export interface BookReference {
   enabled: boolean;
 }
 
+export interface Memory {
+  id: string;
+  content: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface TimeContext {
   content: string;
   updatedAt: number | null; // timestamp
@@ -47,8 +54,8 @@ export interface Settings {
   geminiModel: GeminiModel;
   aiEnabled: boolean;
 
-  // Personal Context (immutable, doesn't depend on time)
-  personalContext: string;
+  // Personal Memories (facts about the user)
+  memories: Memory[];
 
   // AI Mentor Orientations
   generalOrientations: string;
@@ -88,6 +95,11 @@ interface SettingsStore extends Settings {
   isSettingsOpen: boolean;
   setIsSettingsOpen: (isOpen: boolean) => void;
 
+  // Memory actions
+  addMemory: (content: string) => string; // returns id
+  updateMemory: (id: string, content: string) => void;
+  removeMemory: (id: string) => void;
+
   // Book references actions
   addBookReference: (title: string, topics: string) => void;
   updateBookReference: (id: string, title: string, topics: string) => void;
@@ -112,8 +124,8 @@ const defaultSettings: Settings = {
   geminiModel: 'gemini-2.5-flash',
   aiEnabled: true,
 
-  // Personal Context
-  personalContext: '',
+  // Personal Memories
+  memories: [],
 
   // AI Mentor Orientations
   generalOrientations: '',
@@ -155,6 +167,25 @@ export const useSettingsStore = create<SettingsStore>()(
       resetSettings: () => set({ ...defaultSettings }),
 
       setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
+
+      addMemory: (content) => {
+        const id = crypto.randomUUID();
+        const now = Date.now();
+        set((state) => ({
+          memories: [...state.memories, { id, content, createdAt: now, updatedAt: now }]
+        }));
+        return id;
+      },
+
+      updateMemory: (id, content) => set((state) => ({
+        memories: state.memories.map((m) =>
+          m.id === id ? { ...m, content, updatedAt: Date.now() } : m
+        )
+      })),
+
+      removeMemory: (id) => set((state) => ({
+        memories: state.memories.filter((m) => m.id !== id)
+      })),
 
       addBookReference: (title, topics) => set((state) => ({
         bookReferences: [

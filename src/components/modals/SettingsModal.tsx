@@ -1,8 +1,8 @@
 'use client';
 
 import { Modal } from '@/components/ui/Modal';
-import { useSettingsStore, GEMINI_MODELS, GeminiModel, BookReference, TimeContextType, TIME_CONTEXT_LABELS, TIME_CONTEXT_DURATIONS } from '@/store/settings-store';
-import { Bot, Calendar, Bell, Palette, RotateCcw, BookOpen, Plus, ChevronDown, ChevronUp, Trash2, GraduationCap, Target, Clock, Save, Sparkles, Loader2 } from 'lucide-react';
+import { useSettingsStore, GEMINI_MODELS, GeminiModel, BookReference, Memory, TimeContextType, TIME_CONTEXT_LABELS, TIME_CONTEXT_DURATIONS } from '@/store/settings-store';
+import { Bot, Calendar, Bell, Palette, RotateCcw, BookOpen, Plus, ChevronDown, ChevronUp, Trash2, GraduationCap, Target, Clock, Save, Sparkles, Loader2, Brain, FileText } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -43,7 +43,10 @@ export function SettingsModal() {
     geminiModel,
     aiEnabled,
     // Mentor/Orientations
-    personalContext,
+    memories,
+    addMemory,
+    updateMemory,
+    removeMemory,
     generalOrientations,
     bookReferences,
     addBookReference,
@@ -86,6 +89,15 @@ export function SettingsModal() {
   const [expandedBooks, setExpandedBooks] = useState<Set<string>>(new Set());
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [isGeneratingTopics, setIsGeneratingTopics] = useState(false);
+
+  // State for memories
+  const [isAddingMemory, setIsAddingMemory] = useState(false);
+  const [isBulkMemoryMode, setIsBulkMemoryMode] = useState(false);
+  const [editingMemoryId, setEditingMemoryId] = useState<string | null>(null);
+  const [newMemoryContent, setNewMemoryContent] = useState('');
+  const [bulkMemoryText, setBulkMemoryText] = useState('');
+  const [isProcessingMemories, setIsProcessingMemories] = useState(false);
+  const [deleteMemoryConfirmId, setDeleteMemoryConfirmId] = useState<string | null>(null);
 
   // State for time contexts
   const [editingContexts, setEditingContexts] = useState<Record<TimeContextType, string>>({
@@ -240,6 +252,68 @@ export function SettingsModal() {
     }
   };
 
+  // Memory handlers
+  const handleAddMemory = () => {
+    if (newMemoryContent.trim()) {
+      addMemory(newMemoryContent.trim());
+      setNewMemoryContent('');
+      setIsAddingMemory(false);
+    }
+  };
+
+  const handleEditMemory = (memory: Memory) => {
+    setEditingMemoryId(memory.id);
+    setNewMemoryContent(memory.content);
+  };
+
+  const handleSaveMemoryEdit = () => {
+    if (editingMemoryId && newMemoryContent.trim()) {
+      updateMemory(editingMemoryId, newMemoryContent.trim());
+      setEditingMemoryId(null);
+      setNewMemoryContent('');
+    }
+  };
+
+  const handleCancelMemoryEdit = () => {
+    setEditingMemoryId(null);
+    setNewMemoryContent('');
+    setIsAddingMemory(false);
+    setIsBulkMemoryMode(false);
+    setBulkMemoryText('');
+  };
+
+  const handleDeleteMemory = (id: string) => {
+    removeMemory(id);
+    setDeleteMemoryConfirmId(null);
+  };
+
+  const handleBulkImportMemories = async () => {
+    if (!bulkMemoryText.trim()) return;
+
+    setIsProcessingMemories(true);
+    try {
+      const response = await fetch('/api/memories/split', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: bulkMemoryText.trim(), model: geminiModel }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        data.memories.forEach((content: string) => {
+          addMemory(content);
+        });
+        setBulkMemoryText('');
+        setIsBulkMemoryMode(false);
+        setIsAddingMemory(false);
+      }
+    } catch (error) {
+      console.error('Error importing memories:', error);
+    } finally {
+      setIsProcessingMemories(false);
+    }
+  };
+
   const handleClose = () => {
     setIsSettingsOpen(false);
   };
@@ -367,20 +441,166 @@ export function SettingsModal() {
           {activeTab === 'mentor' && (
             <div className="space-y-6">
               <div>
-                <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">
-                  Contexto Pessoal
-                </h3>
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white flex items-center gap-2">
+                    <Brain className="w-4 h-4" />
+                    Memórias
+                  </h3>
+                  {!isAddingMemory && !editingMemoryId && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => { setIsAddingMemory(true); setIsBulkMemoryMode(true); }}
+                        className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-800 dark:text-gray-400"
+                        title="Importar texto e separar em memórias"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Importar
+                      </button>
+                      <button
+                        onClick={() => { setIsAddingMemory(true); setIsBulkMemoryMode(false); }}
+                        className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Adicionar
+                      </button>
+                    </div>
+                  )}
+                </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  Informações permanentes sobre você que a IA deve sempre considerar.
-                  Diferente das metas temporais, este contexto não expira.
+                  Fatos permanentes sobre você. A IA pode sugerir criar/editar memórias durante conversas.
                 </p>
-                <textarea
-                  value={personalContext}
-                  onChange={(e) => updateSettings({ personalContext: e.target.value })}
-                  placeholder="Ex: Sou estudante de medicina, trabalho meio período, tenho TDAH e preciso de pausas frequentes, sou introvertido e prefiro atividades solo..."
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+
+                {/* Bulk Import Form */}
+                {isAddingMemory && isBulkMemoryMode && !editingMemoryId && (
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 mb-3">
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs text-gray-700 dark:text-gray-300 mb-1">
+                          Cole um texto sobre você (a IA vai separar em memórias)
+                        </label>
+                        <textarea
+                          value={bulkMemoryText}
+                          onChange={(e) => setBulkMemoryText(e.target.value)}
+                          placeholder="Sou estudante de medicina, trabalho meio período. Tenho TDAH e preciso de pausas frequentes. Sou introvertido e prefiro atividades solo. Moro em São Paulo..."
+                          rows={4}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={handleCancelMemoryEdit}
+                          className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={handleBulkImportMemories}
+                          disabled={!bulkMemoryText.trim() || isProcessingMemories}
+                          className="flex items-center gap-1 px-3 py-1.5 text-sm bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50"
+                        >
+                          {isProcessingMemories ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                          Processar com IA
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Single Add/Edit Form */}
+                {(isAddingMemory && !isBulkMemoryMode || editingMemoryId) && (
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 mb-3">
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs text-gray-700 dark:text-gray-300 mb-1">
+                          {editingMemoryId ? 'Editar memória' : 'Nova memória'}
+                        </label>
+                        <textarea
+                          value={newMemoryContent}
+                          onChange={(e) => setNewMemoryContent(e.target.value)}
+                          placeholder="Ex: Tem TDAH e precisa de pausas frequentes"
+                          rows={2}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={handleCancelMemoryEdit}
+                          className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={editingMemoryId ? handleSaveMemoryEdit : handleAddMemory}
+                          disabled={!newMemoryContent.trim()}
+                          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                        >
+                          {editingMemoryId ? 'Salvar' : 'Adicionar'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Memory List */}
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {memories.length === 0 && !isAddingMemory && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                      Nenhuma memória registrada ainda.
+                    </p>
+                  )}
+
+                  {memories.map((memory) => (
+                    <div
+                      key={memory.id}
+                      className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-2"
+                    >
+                      {deleteMemoryConfirmId === memory.id ? (
+                        <div className="bg-red-50 dark:bg-red-900/20 p-2 rounded">
+                          <p className="text-xs text-red-700 dark:text-red-400 mb-2">
+                            Excluir esta memória?
+                          </p>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => setDeleteMemoryConfirmId(null)}
+                              className="px-2 py-1 text-xs text-gray-600"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              onClick={() => handleDeleteMemory(memory.id)}
+                              className="px-2 py-1 text-xs bg-red-600 text-white rounded"
+                            >
+                              Excluir
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-start gap-2">
+                          <Brain className="w-4 h-4 text-purple-500 flex-shrink-0 mt-0.5" />
+                          <p className="flex-1 text-sm text-gray-700 dark:text-gray-300">
+                            {memory.content}
+                          </p>
+                          <button
+                            onClick={() => handleEditMemory(memory)}
+                            className="p-1 text-gray-400 hover:text-blue-600"
+                            title="Editar"
+                          >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                            </svg>
+                          </button>
+                          <button
+                            onClick={() => setDeleteMemoryConfirmId(memory.id)}
+                            className="p-1 text-gray-400 hover:text-red-600"
+                            title="Excluir"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div>

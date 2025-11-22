@@ -37,10 +37,21 @@ export interface PendingAction {
   status: 'pending' | 'accepted' | 'rejected';
 }
 
+export interface PendingMemoryAction {
+  id: string;
+  type: 'create' | 'update' | 'delete';
+  memoryId?: string; // for update/delete
+  currentContent?: string; // for update/delete - what it was
+  newContent?: string; // for create/update - what it will be
+  reason: string;
+  status: 'pending' | 'accepted' | 'rejected';
+}
+
 interface ChatStore {
   // State
   messages: ChatMessage[];
   pendingActions: PendingAction[];
+  pendingMemoryActions: PendingMemoryAction[];
   isOpen: boolean;
   isLoading: boolean;
   error: string | null;
@@ -53,7 +64,7 @@ interface ChatStore {
   setIsLoading: (isLoading: boolean) => void;
   setError: (error: string | null) => void;
 
-  // Pending actions
+  // Pending calendar actions
   addPendingActions: (actions: Omit<PendingAction, 'id' | 'status'>[]) => void;
   updateActionStatus: (id: string, status: PendingAction['status']) => void;
   updateActionData: (id: string, data: Partial<PendingAction['data']>) => void;
@@ -63,11 +74,19 @@ interface ChatStore {
   acceptAllActions: () => void;
   rejectAllActions: () => void;
   getPendingActions: () => PendingAction[];
+
+  // Pending memory actions
+  addPendingMemoryActions: (actions: Omit<PendingMemoryAction, 'id' | 'status'>[]) => void;
+  acceptMemoryAction: (id: string) => void;
+  rejectMemoryAction: (id: string) => void;
+  clearPendingMemoryActions: () => void;
+  getPendingMemoryActions: () => PendingMemoryAction[];
 }
 
 export const useChatStore = create<ChatStore>((set, get) => ({
   messages: [],
   pendingActions: [],
+  pendingMemoryActions: [],
   isOpen: false,
   isLoading: false,
   error: null,
@@ -148,5 +167,39 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   getPendingActions: () => {
     return get().pendingActions.filter((action) => action.status === 'pending');
+  },
+
+  // Memory actions
+  addPendingMemoryActions: (actions) => {
+    const newActions: PendingMemoryAction[] = actions.map((action) => ({
+      ...action,
+      id: crypto.randomUUID(),
+      status: 'pending',
+    }));
+    set((state) => ({
+      pendingMemoryActions: [...state.pendingMemoryActions, ...newActions],
+    }));
+  },
+
+  acceptMemoryAction: (id) => {
+    set((state) => ({
+      pendingMemoryActions: state.pendingMemoryActions.map((action) =>
+        action.id === id ? { ...action, status: 'accepted' } : action
+      ),
+    }));
+  },
+
+  rejectMemoryAction: (id) => {
+    set((state) => ({
+      pendingMemoryActions: state.pendingMemoryActions.map((action) =>
+        action.id === id ? { ...action, status: 'rejected' } : action
+      ),
+    }));
+  },
+
+  clearPendingMemoryActions: () => set({ pendingMemoryActions: [] }),
+
+  getPendingMemoryActions: () => {
+    return get().pendingMemoryActions.filter((action) => action.status === 'pending');
   },
 }));
