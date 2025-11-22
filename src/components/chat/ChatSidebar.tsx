@@ -121,6 +121,7 @@ export function ChatSidebar() {
     setIsLoading,
     setError,
     addPendingActions,
+    clearPendingActions,
     acceptAction,
     rejectAction,
     acceptAllActions,
@@ -331,7 +332,9 @@ export function ChatSidebar() {
       await addDbMessage('assistant', data.response, pendingActionsData);
 
       // Add pending actions to local store for UI
+      // Clear old pending actions first so new ones replace them
       if (data.actions && data.actions.length > 0) {
+        clearPendingActions();
         addPendingActions(data.actions);
       }
 
