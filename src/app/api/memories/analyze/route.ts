@@ -43,13 +43,13 @@ MENSAGEM DO USUÁRIO:
 "${message}"
 
 REGRAS:
-1. Memórias são FATOS sobre o usuário (nome, profissão, preferências, características, hábitos, condições, etc.)
-2. NÃO são memórias: pedidos, perguntas, eventos do calendário, metas temporárias
-3. Cada memória deve ser uma informação ATÔMICA (um fato por memória)
-4. Se a mensagem contém info que ATUALIZA uma memória existente → type: "update"
-5. Se a mensagem CONTRADIZ uma memória existente → type: "update"
-6. Se é info NOVA sobre o usuário → type: "create"
-7. Se uma memória ficou obsoleta/incorreta → type: "delete"
+1. Memórias são FATOS sobre o usuário (nome, profissão, preferências, características, hábitos, condições, produtos que usa, quantidades, etc.)
+2. NÃO são memórias: comandos diretos ("cria um evento"), perguntas sem informação pessoal
+3. SÃO memórias: "meu whey tem 15g" (dado do produto), "prefiro proteína espaçada" (preferência), "acordo às 7h" (hábito)
+4. Cada memória deve ser uma informação ATÔMICA (um fato por memória)
+5. Se a mensagem contém info que ATUALIZA uma memória existente → type: "update"
+6. Se a mensagem CONTRADIZ uma memória existente → type: "update"
+7. Se é info NOVA sobre o usuário → type: "create"
 8. Uma mensagem pode gerar 0, 1 ou VÁRIAS ações
 
 FORMATO DE RESPOSTA (JSON array):
@@ -59,19 +59,6 @@ FORMATO DE RESPOSTA (JSON array):
     "type": "create",
     "newContent": "Texto da nova memória",
     "reason": "Por que criar"
-  },
-  {
-    "type": "update",
-    "memoryId": "id-da-memoria-existente",
-    "currentContent": "Conteúdo atual da memória",
-    "newContent": "Novo conteúdo atualizado",
-    "reason": "Por que atualizar"
-  },
-  {
-    "type": "delete",
-    "memoryId": "id-da-memoria",
-    "currentContent": "Conteúdo que será deletado",
-    "reason": "Por que deletar"
   }
 ]
 \`\`\`
@@ -107,6 +94,9 @@ Responda APENAS com o JSON, sem explicações.`;
     const data = await response.json();
     const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
 
+    console.log('Memory analyze - Message:', message.substring(0, 100));
+    console.log('Memory analyze - Response:', responseText);
+
     // Extract JSON from response
     const jsonMatch = responseText.match(/\[[\s\S]*\]/);
     let actions: MemoryAction[] = [];
@@ -114,6 +104,7 @@ Responda APENAS com o JSON, sem explicações.`;
     if (jsonMatch) {
       try {
         actions = JSON.parse(jsonMatch[0]);
+        console.log('Memory analyze - Actions found:', actions.length);
       } catch {
         console.error('Failed to parse memory actions:', responseText);
       }
