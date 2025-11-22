@@ -22,19 +22,25 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const prompt = `Liste os principais capítulos e tópicos do livro "${title}".
+    const prompt = `Liste TODOS os capítulos e principais conceitos do livro "${title}".
 
-Formato esperado (seja conciso, apenas liste os tópicos):
-- Capítulo 1: Nome do capítulo
-  • Tópico principal 1
-  • Tópico principal 2
-- Capítulo 2: Nome do capítulo
-  • Tópico principal 1
-  • Tópico principal 2
-...
+IMPORTANTE: Liste a estrutura COMPLETA do livro, todos os capítulos do início ao fim.
 
-Se você não conhecer o livro exatamente, liste os tópicos mais prováveis baseado no título e tema.
-Seja direto, não adicione explicações - apenas a lista de capítulos e tópicos.`;
+Formato:
+- Parte/Capítulo: Nome
+  • Conceito chave 1
+  • Conceito chave 2
+
+Exemplo para "Atomic Habits":
+- Introdução: O poder surpreendente dos hábitos atômicos
+- Cap 1: Os 4 Passos para Construir Melhores Hábitos
+  • Deixar óbvio
+  • Tornar atrativo
+  • Facilitar
+  • Tornar satisfatório
+...continue até o final do livro...
+
+Seja direto - apenas a lista, sem explicações. Liste TODOS os capítulos.`;
 
     const response = await fetch(
       `${GEMINI_API_URL}/${model}:generateContent?key=${apiKey}`,
@@ -45,7 +51,7 @@ Seja direto, não adicione explicações - apenas a lista de capítulos e tópic
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.2,
-            maxOutputTokens: 2048,
+            maxOutputTokens: 8192,
           },
         }),
       }
