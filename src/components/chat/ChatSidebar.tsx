@@ -352,10 +352,13 @@ export function ChatSidebar() {
 
         if (memoryResponse.ok) {
           const memoryData = await memoryResponse.json();
+          console.log('Memory analysis result:', memoryData);
           if (memoryData.actions && memoryData.actions.length > 0) {
             clearPendingMemoryActions();
             addPendingMemoryActions(memoryData.actions);
           }
+        } else {
+          console.error('Memory analysis failed:', memoryResponse.status, await memoryResponse.text());
         }
       } catch (memErr) {
         console.error('Memory analysis error:', memErr);

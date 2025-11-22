@@ -116,6 +116,9 @@ Responda APENAS com o JSON, sem explicações.`;
     const data = await response.json();
     const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
 
+    console.log('Memory analyze - Message:', message);
+    console.log('Memory analyze - Gemini response:', responseText);
+
     // Extract JSON from response
     const jsonMatch = responseText.match(/\[[\s\S]*\]/);
     let actions: MemoryAction[] = [];
@@ -123,9 +126,12 @@ Responda APENAS com o JSON, sem explicações.`;
     if (jsonMatch) {
       try {
         actions = JSON.parse(jsonMatch[0]);
+        console.log('Memory analyze - Parsed actions:', actions);
       } catch {
         console.error('Failed to parse memory actions:', responseText);
       }
+    } else {
+      console.log('Memory analyze - No JSON found in response');
     }
 
     return NextResponse.json({ actions });
