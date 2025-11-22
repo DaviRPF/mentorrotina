@@ -39,6 +39,10 @@ interface CalendarStore {
   goToToday: () => void;
   goToPrevious: () => void;
   goToNext: () => void;
+  goToPreviousDay: () => void;
+  goToNextDay: () => void;
+  goToPreviousWeek: () => void;
+  goToNextWeek: () => void;
 
   // Event actions
   setEvents: (events: CalendarEvent[]) => void;
@@ -123,6 +127,26 @@ export const useCalendarStore = create<CalendarStore>((set, get) => ({
         set({ currentDate: addMonths(currentDate, 1) });
         break;
     }
+  },
+
+  goToPreviousDay: () => {
+    const { currentDate } = get();
+    set({ currentDate: addDays(currentDate, -1) });
+  },
+
+  goToNextDay: () => {
+    const { currentDate } = get();
+    set({ currentDate: addDays(currentDate, 1) });
+  },
+
+  goToPreviousWeek: () => {
+    const { currentDate } = get();
+    set({ currentDate: addWeeks(currentDate, -1) });
+  },
+
+  goToNextWeek: () => {
+    const { currentDate } = get();
+    set({ currentDate: addWeeks(currentDate, 1) });
   },
 
   // Events

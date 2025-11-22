@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Search, Menu, Sun, Moon, Settings, Sparkles } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search, Menu, Sun, Moon, Settings, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useCalendarStore } from '@/store/calendar-store';
@@ -22,8 +22,10 @@ export function Header({ onMenuClick }: HeaderProps) {
     view,
     setView,
     goToToday,
-    goToPrevious,
-    goToNext,
+    goToPreviousDay,
+    goToNextDay,
+    goToPreviousWeek,
+    goToNextWeek,
     searchQuery,
     setSearchQuery,
   } = useCalendarStore();
@@ -93,20 +95,34 @@ export function Header({ onMenuClick }: HeaderProps) {
           Hoje
         </Button>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5">
           <button
-            onClick={goToPrevious}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
-            title="Anterior (seta esquerda)"
+            onClick={goToPreviousWeek}
+            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+            title="-7 dias"
+          >
+            <ChevronsLeft className="w-5 h-5" />
+          </button>
+          <button
+            onClick={goToPreviousDay}
+            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+            title="-1 dia"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <button
-            onClick={goToNext}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
-            title="Próximo (seta direita)"
+            onClick={goToNextDay}
+            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+            title="+1 dia"
           >
             <ChevronRight className="w-5 h-5" />
+          </button>
+          <button
+            onClick={goToNextWeek}
+            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+            title="+7 dias"
+          >
+            <ChevronsRight className="w-5 h-5" />
           </button>
         </div>
 
