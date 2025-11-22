@@ -1,12 +1,13 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { X, Send, Bot, Trash2, Check, XIcon, Loader2, Sparkles, ChevronDown, ChevronUp, Calendar, Clock, Repeat, Bell, Palette } from 'lucide-react';
+import { X, Send, Bot, Trash2, Check, XIcon, Loader2, Sparkles, ChevronDown, ChevronUp, Calendar, Clock, Repeat, Bell, Palette, Plus, MessageSquare, ChevronLeft, Edit2, Save } from 'lucide-react';
 import { useChatStore, PendingAction, RecurrenceRule } from '@/store/chat-store';
+import { useConversationStore } from '@/store/conversation-store';
 import { useCalendarStore } from '@/store/calendar-store';
 import { useSettingsStore } from '@/store/settings-store';
 import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 // Color names for display
@@ -61,9 +62,24 @@ function formatReminder(minutes: number | null | undefined): string | null {
   return `${Math.floor(minutes / 1440)} dias antes`;
 }
 
+// Color options for color picker
+const COLOR_OPTIONS = [
+  { value: '#3b82f6', name: 'Azul' },
+  { value: '#ef4444', name: 'Vermelho' },
+  { value: '#22c55e', name: 'Verde' },
+  { value: '#eab308', name: 'Amarelo' },
+  { value: '#a855f7', name: 'Roxo' },
+  { value: '#ec4899', name: 'Rosa' },
+  { value: '#f97316', name: 'Laranja' },
+  { value: '#14b8a6', name: 'Teal' },
+];
+
 export function ChatSidebar() {
   const [input, setInput] = useState('');
   const [expandedActions, setExpandedActions] = useState<Set<string>>(new Set());
+  const [showConversationList, setShowConversationList] = useState(false);
+  const [editingActionId, setEditingActionId] = useState<string | null>(null);
+  const [editingData, setEditingData] = useState<Partial<PendingAction['data']>>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -80,13 +96,12 @@ export function ChatSidebar() {
   };
 
   const {
-    messages,
     pendingActions,
     isOpen,
     isLoading,
     error,
     setIsOpen,
-    addMessage,
+    addMessage: addLocalMessage,
     clearMessages,
     setIsLoading,
     setError,
@@ -96,15 +111,36 @@ export function ChatSidebar() {
     acceptAllActions,
     rejectAllActions,
     getPendingActions,
+    updateActionData,
   } = useChatStore();
+
+  // Conversation store for database persistence
+  const {
+    conversations,
+    currentConversationId,
+    currentMessages,
+    isLoading: isLoadingConversations,
+    isLoadingMessages,
+    fetchConversations,
+    createConversation,
+    selectConversation,
+    deleteConversation,
+    addMessage: addDbMessage,
+    clearCurrentConversation,
+  } = useConversationStore();
 
   const { addEvent, updateEvent, removeEvent, events, calendars, setEvents } = useCalendarStore();
   const { geminiModel, aiEnabled, personalContext, generalOrientations, bookSummaries, timeContexts } = useSettingsStore();
 
+  // Load conversations on mount
+  useEffect(() => {
+    fetchConversations();
+  }, [fetchConversations]);
+
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, pendingActions]);
+  }, [currentMessages, pendingActions]);
 
   // Focus input when opened
   useEffect(() => {
@@ -118,9 +154,11 @@ export function ChatSidebar() {
 
     const userMessage = input.trim();
     setInput('');
-    addMessage({ role: 'user', content: userMessage });
     setIsLoading(true);
     setError(null);
+
+    // Save user message to database
+    await addDbMessage('user', userMessage);
 
     try {
       const response = await fetch('/api/chat', {
@@ -129,7 +167,8 @@ export function ChatSidebar() {
         body: JSON.stringify({
           message: userMessage,
           model: geminiModel,
-          history: messages.slice(-10).map((m) => ({
+          // Use all messages from DB for full context
+          history: currentMessages.map((m) => ({
             role: m.role,
             content: m.content,
           })),
@@ -151,21 +190,79 @@ export function ChatSidebar() {
         throw new Error(data.error || 'Erro ao enviar mensagem');
       }
 
-      addMessage({ role: 'assistant', content: data.response });
+      // Save assistant message to database with pending actions
+      const pendingActionsData = data.actions && data.actions.length > 0 ? data.actions : undefined;
+      await addDbMessage('assistant', data.response, pendingActionsData);
 
-      // Add pending actions if any
+      // Add pending actions to local store for UI
       if (data.actions && data.actions.length > 0) {
         addPendingActions(data.actions);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
-      addMessage({
-        role: 'assistant',
-        content: 'Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente.',
-      });
+      await addDbMessage(
+        'assistant',
+        'Desculpe, ocorreu um erro ao processar sua mensagem. Por favor, tente novamente.'
+      );
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Start new conversation
+  const handleNewConversation = async () => {
+    clearMessages(); // Clear local chat store
+    clearCurrentConversation(); // Clear DB conversation
+    setShowConversationList(false);
+  };
+
+  // Select existing conversation
+  const handleSelectConversation = async (id: string) => {
+    clearMessages(); // Clear local pending actions
+    await selectConversation(id);
+    setShowConversationList(false);
+  };
+
+  // Delete a conversation
+  const handleDeleteConversation = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm('Tem certeza que deseja excluir esta conversa?')) {
+      await deleteConversation(id);
+    }
+  };
+
+  // Start editing an action
+  const startEditing = (action: PendingAction) => {
+    setEditingActionId(action.id);
+    setEditingData({ ...action.data });
+    // Auto-expand the action being edited
+    setExpandedActions(prev => {
+      const next = new Set(prev);
+      next.add(action.id);
+      return next;
+    });
+  };
+
+  // Cancel editing
+  const cancelEditing = () => {
+    setEditingActionId(null);
+    setEditingData({});
+  };
+
+  // Save edited action
+  const saveEditing = () => {
+    if (editingActionId && editingData) {
+      updateActionData(editingActionId, editingData);
+      setEditingActionId(null);
+      setEditingData({});
+    }
+  };
+
+  // Format datetime for input
+  const formatDateTimeForInput = (isoString: string | undefined): string => {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    return format(date, "yyyy-MM-dd'T'HH:mm");
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -289,22 +386,49 @@ export function ChatSidebar() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-            <Sparkles className="w-4 h-4 text-white" />
-          </div>
+          {showConversationList ? (
+            <button
+              onClick={() => setShowConversationList(false)}
+              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5 text-gray-500" />
+            </button>
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-white" />
+            </div>
+          )}
           <div>
-            <h2 className="font-semibold text-gray-900 dark:text-white">MentorRotina</h2>
-            <p className="text-xs text-gray-500 dark:text-gray-400">Assistente IA</p>
+            <h2 className="font-semibold text-gray-900 dark:text-white">
+              {showConversationList ? 'Conversas' : 'MentorRotina'}
+            </h2>
+            <p className="text-xs text-gray-500 dark:text-gray-400">
+              {showConversationList
+                ? `${conversations.length} conversa${conversations.length !== 1 ? 's' : ''}`
+                : 'Assistente IA'
+              }
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <button
-            onClick={clearMessages}
-            className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-            title="Limpar conversa"
-          >
-            <Trash2 className="w-4 h-4 text-gray-500" />
-          </button>
+          {!showConversationList && (
+            <>
+              <button
+                onClick={handleNewConversation}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                title="Nova conversa"
+              >
+                <Plus className="w-4 h-4 text-gray-500" />
+              </button>
+              <button
+                onClick={() => setShowConversationList(true)}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                title="Ver conversas"
+              >
+                <MessageSquare className="w-4 h-4 text-gray-500" />
+              </button>
+            </>
+          )}
           <button
             onClick={() => setIsOpen(false)}
             className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
@@ -314,123 +438,185 @@ export function ChatSidebar() {
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 && (
-          <div className="text-center py-8">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mx-auto mb-4">
-              <Bot className="w-8 h-8 text-white" />
+      {/* Conversation List */}
+      {showConversationList ? (
+        <div className="flex-1 overflow-y-auto">
+          {isLoadingConversations ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
             </div>
-            <h3 className="font-medium text-gray-900 dark:text-white mb-2">
-              Olá! Sou o MentorRotina
-            </h3>
-            <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto">
-              Posso ajudar você a organizar sua agenda. Experimente dizer:
-            </p>
-            <div className="mt-4 space-y-2">
-              {[
-                'Quero ir na academia amanhã às 7h',
-                'Move a reunião de terça pra quinta',
-                'O que tenho pra fazer essa semana?',
-              ].map((suggestion) => (
+          ) : conversations.length === 0 ? (
+            <div className="text-center py-8 px-4">
+              <MessageSquare className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Nenhuma conversa ainda
+              </p>
+              <button
+                onClick={handleNewConversation}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Iniciar conversa
+              </button>
+            </div>
+          ) : (
+            <div className="divide-y divide-gray-100 dark:divide-gray-800">
+              {conversations.map((conv) => (
                 <button
-                  key={suggestion}
-                  onClick={() => setInput(suggestion)}
-                  className="block w-full text-left px-3 py-2 text-sm bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                  key={conv.id}
+                  onClick={() => handleSelectConversation(conv.id)}
+                  className={cn(
+                    'w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors flex items-start gap-3',
+                    currentConversationId === conv.id && 'bg-blue-50 dark:bg-blue-900/20'
+                  )}
                 >
-                  "{suggestion}"
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                    <MessageSquare className="w-4 h-4 text-white" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                      {conv.title}
+                    </p>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      {formatDistanceToNow(new Date(conv.updatedAt), { addSuffix: true, locale: ptBR })}
+                    </p>
+                  </div>
+                  <button
+                    onClick={(e) => handleDeleteConversation(conv.id, e)}
+                    className="p-1 hover:bg-gray-200 dark:hover:bg-gray-700 rounded transition-colors opacity-0 group-hover:opacity-100"
+                  >
+                    <Trash2 className="w-4 h-4 text-gray-400 hover:text-red-500" />
+                  </button>
                 </button>
               ))}
             </div>
-          </div>
-        )}
-
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={cn(
-              'flex gap-3',
-              message.role === 'user' ? 'flex-row-reverse' : ''
+          )}
+        </div>
+      ) : (
+        <>
+          {/* Messages */}
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {currentMessages.length === 0 && (
+              <div className="text-center py-8">
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mx-auto mb-4">
+                  <Bot className="w-8 h-8 text-white" />
+                </div>
+                <h3 className="font-medium text-gray-900 dark:text-white mb-2">
+                  Olá! Sou o MentorRotina
+                </h3>
+                <p className="text-sm text-gray-500 dark:text-gray-400 max-w-xs mx-auto">
+                  Posso ajudar você a organizar sua agenda. Experimente dizer:
+                </p>
+                <div className="mt-4 space-y-2">
+                  {[
+                    'Quero ir na academia amanhã às 7h',
+                    'Move a reunião de terça pra quinta',
+                    'O que tenho pra fazer essa semana?',
+                  ].map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      onClick={() => setInput(suggestion)}
+                      className="block w-full text-left px-3 py-2 text-sm bg-gray-100 dark:bg-gray-800 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                    >
+                      "{suggestion}"
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
-          >
-            <div
-              className={cn(
-                'w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center',
-                message.role === 'user'
-                  ? 'bg-blue-600'
-                  : 'bg-gradient-to-br from-blue-500 to-purple-600'
-              )}
-            >
-              {message.role === 'user' ? (
-                <span className="text-white text-sm font-medium">V</span>
-              ) : (
-                <Bot className="w-4 h-4 text-white" />
-              )}
-            </div>
-            <div
-              className={cn(
-                'max-w-[80%] rounded-2xl px-4 py-2',
-                message.role === 'user'
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
-              )}
-            >
-              <p className="text-sm whitespace-pre-wrap">{message.content}</p>
-              <p
+
+            {currentMessages.map((message) => (
+              <div
+                key={message.id}
                 className={cn(
-                  'text-xs mt-1',
-                  message.role === 'user'
-                    ? 'text-blue-200'
-                    : 'text-gray-500 dark:text-gray-400'
+                  'flex gap-3',
+                  message.role === 'user' ? 'flex-row-reverse' : ''
                 )}
               >
-                {format(message.timestamp, 'HH:mm')}
-              </p>
-            </div>
-          </div>
-        ))}
-
-        {isLoading && (
-          <div className="flex gap-3">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-              <Bot className="w-4 h-4 text-white" />
-            </div>
-            <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl px-4 py-3">
-              <div className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
-                <span className="text-sm text-gray-500">Pensando...</span>
+                <div
+                  className={cn(
+                    'w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center',
+                    message.role === 'user'
+                      ? 'bg-blue-600'
+                      : 'bg-gradient-to-br from-blue-500 to-purple-600'
+                  )}
+                >
+                  {message.role === 'user' ? (
+                    <span className="text-white text-sm font-medium">V</span>
+                  ) : (
+                    <Bot className="w-4 h-4 text-white" />
+                  )}
+                </div>
+                <div
+                  className={cn(
+                    'max-w-[80%] rounded-2xl px-4 py-2',
+                    message.role === 'user'
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
+                  )}
+                >
+                  <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                  <p
+                    className={cn(
+                      'text-xs mt-1',
+                      message.role === 'user'
+                        ? 'text-blue-200'
+                        : 'text-gray-500 dark:text-gray-400'
+                    )}
+                  >
+                    {format(new Date(message.createdAt), 'HH:mm')}
+                  </p>
+                </div>
               </div>
-            </div>
-          </div>
-        )}
+            ))}
 
-        <div ref={messagesEndRef} />
-      </div>
+            {isLoading && (
+              <div className="flex gap-3">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                  <Bot className="w-4 h-4 text-white" />
+                </div>
+                <div className="bg-gray-100 dark:bg-gray-800 rounded-2xl px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <Loader2 className="w-4 h-4 animate-spin text-gray-500" />
+                    <span className="text-sm text-gray-500">Pensando...</span>
+                  </div>
+                </div>
+              </div>
+            )}
 
-      {/* Pending Actions */}
-      {pending.length > 0 && (
-        <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-800/50">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-              Ações Pendentes ({pending.length})
-            </h3>
-            <div className="flex gap-2">
-              <button
-                onClick={handleAcceptAll}
-                className="text-xs text-green-600 hover:text-green-700 font-medium"
-              >
-                Aceitar todas
-              </button>
-              <button
-                onClick={rejectAllActions}
-                className="text-xs text-red-600 hover:text-red-700 font-medium"
-              >
-                Rejeitar todas
-              </button>
-            </div>
+            {isLoadingMessages && (
+              <div className="flex items-center justify-center py-4">
+                <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                <span className="ml-2 text-sm text-gray-500">Carregando mensagens...</span>
+              </div>
+            )}
+
+            <div ref={messagesEndRef} />
           </div>
 
-          <div className="space-y-2 max-h-64 overflow-y-auto">
+          {/* Pending Actions */}
+          {pending.length > 0 && (
+            <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-800/50">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                  Ações Pendentes ({pending.length})
+                </h3>
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleAcceptAll}
+                    className="text-xs text-green-600 hover:text-green-700 font-medium"
+                  >
+                    Aceitar todas
+                  </button>
+                  <button
+                    onClick={rejectAllActions}
+                    className="text-xs text-red-600 hover:text-red-700 font-medium"
+                  >
+                    Rejeitar todas
+                  </button>
+                </div>
+              </div>
+
+              <div className="space-y-2 max-h-64 overflow-y-auto">
             {pending.map((action) => {
               const isExpanded = expandedActions.has(action.id);
               const colorName = action.data.color ? COLOR_NAMES[action.data.color.toLowerCase()] || action.data.color : null;
@@ -483,25 +669,170 @@ export function ChatSidebar() {
                     </div>
 
                     <div className="flex gap-1">
-                      <button
-                        onClick={() => handleAcceptAction(action)}
-                        className="p-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors"
-                        title="Aceitar"
-                      >
-                        <Check className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleRejectAction(action)}
-                        className="p-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"
-                        title="Rejeitar"
-                      >
-                        <XIcon className="w-4 h-4" />
-                      </button>
+                      {editingActionId === action.id ? (
+                        <>
+                          <button
+                            onClick={saveEditing}
+                            className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
+                            title="Salvar"
+                          >
+                            <Save className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={cancelEditing}
+                            className="p-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors"
+                            title="Cancelar"
+                          >
+                            <XIcon className="w-4 h-4" />
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => startEditing(action)}
+                            className="p-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg transition-colors"
+                            title="Editar"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleAcceptAction(action)}
+                            className="p-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors"
+                            title="Aceitar"
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleRejectAction(action)}
+                            className="p-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"
+                            title="Rejeitar"
+                          >
+                            <XIcon className="w-4 h-4" />
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
 
-                  {/* Expanded details */}
-                  {isExpanded && (
+                  {/* Editing Form */}
+                  {editingActionId === action.id && (
+                    <div className="px-3 pb-3 pt-2 border-t border-gray-100 dark:border-gray-700 space-y-3 text-xs">
+                      {/* Title */}
+                      <div>
+                        <label className="block text-gray-500 dark:text-gray-400 mb-1">Título</label>
+                        <input
+                          type="text"
+                          value={editingData.title || ''}
+                          onChange={(e) => setEditingData({ ...editingData, title: e.target.value })}
+                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                        />
+                      </div>
+
+                      {/* Description */}
+                      <div>
+                        <label className="block text-gray-500 dark:text-gray-400 mb-1">Descrição</label>
+                        <input
+                          type="text"
+                          value={editingData.description || ''}
+                          onChange={(e) => setEditingData({ ...editingData, description: e.target.value })}
+                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                          placeholder="(opcional)"
+                        />
+                      </div>
+
+                      {/* Start Time */}
+                      <div>
+                        <label className="block text-gray-500 dark:text-gray-400 mb-1">Início</label>
+                        <input
+                          type="datetime-local"
+                          value={formatDateTimeForInput(editingData.startTime)}
+                          onChange={(e) => setEditingData({ ...editingData, startTime: new Date(e.target.value).toISOString() })}
+                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                        />
+                      </div>
+
+                      {/* End Time */}
+                      <div>
+                        <label className="block text-gray-500 dark:text-gray-400 mb-1">Término</label>
+                        <input
+                          type="datetime-local"
+                          value={formatDateTimeForInput(editingData.endTime)}
+                          onChange={(e) => setEditingData({ ...editingData, endTime: new Date(e.target.value).toISOString() })}
+                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                        />
+                      </div>
+
+                      {/* Color */}
+                      <div>
+                        <label className="block text-gray-500 dark:text-gray-400 mb-1">Cor</label>
+                        <div className="flex flex-wrap gap-1.5">
+                          {COLOR_OPTIONS.map((color) => (
+                            <button
+                              key={color.value}
+                              onClick={() => setEditingData({ ...editingData, color: color.value })}
+                              className={cn(
+                                'w-6 h-6 rounded-full border-2 transition-all',
+                                editingData.color === color.value
+                                  ? 'border-gray-900 dark:border-white scale-110'
+                                  : 'border-transparent hover:scale-105'
+                              )}
+                              style={{ backgroundColor: color.value }}
+                              title={color.name}
+                            />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Calendar */}
+                      <div>
+                        <label className="block text-gray-500 dark:text-gray-400 mb-1">Calendário</label>
+                        <select
+                          value={editingData.calendarId || calendars[0]?.id || ''}
+                          onChange={(e) => setEditingData({ ...editingData, calendarId: e.target.value })}
+                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                        >
+                          {calendars.map((cal) => (
+                            <option key={cal.id} value={cal.id}>{cal.name}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Reminder */}
+                      <div>
+                        <label className="block text-gray-500 dark:text-gray-400 mb-1">Lembrete</label>
+                        <select
+                          value={editingData.reminderMinutes ?? 15}
+                          onChange={(e) => setEditingData({ ...editingData, reminderMinutes: e.target.value ? Number(e.target.value) : null })}
+                          className="w-full px-2 py-1.5 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-700 text-gray-900 dark:text-white text-sm"
+                        >
+                          <option value="">Sem lembrete</option>
+                          <option value="5">5 minutos antes</option>
+                          <option value="10">10 minutos antes</option>
+                          <option value="15">15 minutos antes</option>
+                          <option value="30">30 minutos antes</option>
+                          <option value="60">1 hora antes</option>
+                          <option value="1440">1 dia antes</option>
+                        </select>
+                      </div>
+
+                      {/* All Day */}
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          id={`allday-${action.id}`}
+                          checked={editingData.isAllDay || false}
+                          onChange={(e) => setEditingData({ ...editingData, isAllDay: e.target.checked })}
+                          className="rounded border-gray-300"
+                        />
+                        <label htmlFor={`allday-${action.id}`} className="text-gray-700 dark:text-gray-300">
+                          Dia inteiro
+                        </label>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Expanded details (view mode) */}
+                  {isExpanded && editingActionId !== action.id && (
                     <div className="px-3 pb-3 pt-1 border-t border-gray-100 dark:border-gray-700 space-y-2 text-xs">
                       {/* Title & Description */}
                       {action.data.title && (
@@ -597,45 +928,47 @@ export function ChatSidebar() {
                   )}
                 </div>
               );
-            })}
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Error */}
+          {error && (
+            <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">
+              {error}
+            </div>
+          )}
+
+          {/* Input */}
+          <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+            <div className="flex gap-2">
+              <textarea
+                ref={inputRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Digite sua mensagem..."
+                rows={1}
+                className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                disabled={!aiEnabled || isLoading || showConversationList}
+              />
+              <button
+                onClick={handleSend}
+                disabled={!input.trim() || !aiEnabled || isLoading || showConversationList}
+                className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <Send className="w-5 h-5" />
+              </button>
+            </div>
+            {!aiEnabled && (
+              <p className="text-xs text-gray-500 mt-2">
+                Assistente IA desativado. Ative nas configurações.
+              </p>
+            )}
           </div>
-        </div>
+        </>
       )}
-
-      {/* Error */}
-      {error && (
-        <div className="px-4 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 text-sm">
-          {error}
-        </div>
-      )}
-
-      {/* Input */}
-      <div className="border-t border-gray-200 dark:border-gray-700 p-4">
-        <div className="flex gap-2">
-          <textarea
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Digite sua mensagem..."
-            rows={1}
-            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
-            disabled={!aiEnabled || isLoading}
-          />
-          <button
-            onClick={handleSend}
-            disabled={!input.trim() || !aiEnabled || isLoading}
-            className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <Send className="w-5 h-5" />
-          </button>
-        </div>
-        {!aiEnabled && (
-          <p className="text-xs text-gray-500 mt-2">
-            Assistente IA desativado. Ative nas configurações.
-          </p>
-        )}
-      </div>
     </div>
   );
 }

@@ -56,6 +56,7 @@ interface ChatStore {
   // Pending actions
   addPendingActions: (actions: Omit<PendingAction, 'id' | 'status'>[]) => void;
   updateActionStatus: (id: string, status: PendingAction['status']) => void;
+  updateActionData: (id: string, data: Partial<PendingAction['data']>) => void;
   clearPendingActions: () => void;
   acceptAction: (id: string) => void;
   rejectAction: (id: string) => void;
@@ -107,6 +108,14 @@ export const useChatStore = create<ChatStore>((set, get) => ({
     set((state) => ({
       pendingActions: state.pendingActions.map((action) =>
         action.id === id ? { ...action, status } : action
+      ),
+    }));
+  },
+
+  updateActionData: (id, data) => {
+    set((state) => ({
+      pendingActions: state.pendingActions.map((action) =>
+        action.id === id ? { ...action, data: { ...action.data, ...data } } : action
       ),
     }));
   },
