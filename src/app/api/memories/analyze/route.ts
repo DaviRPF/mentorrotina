@@ -34,47 +34,24 @@ export async function POST(request: NextRequest) {
       ? memories.map((m: { id: string; content: string }, i: number) => `[${m.id}] ${m.content}`).join('\n')
       : '(nenhuma memória registrada)';
 
-    const prompt = `Você é um extrator de informações pessoais. Analise a mensagem e EXTRAIA TODAS as informações úteis sobre o usuário.
+    const prompt = `TAREFA: Extraia fatos pessoais da mensagem abaixo.
 
-MEMÓRIAS JÁ SALVAS:
-${memoriesContext}
+MENSAGEM: "${message}"
 
-MENSAGEM PARA ANALISAR:
-"${message}"
+MEMÓRIAS EXISTENTES: ${memoriesContext}
 
-VOCÊ DEVE EXTRAIR:
-- Preferências ("quero X espaçado", "prefiro Y") → SALVAR
-- Detalhes de produtos ("meu whey tem X gramas", "meu scoop tem Y") → SALVAR
-- Características pessoais (peso, altura, condições) → SALVAR
-- Hábitos e rotinas ("acordo às X", "treino Y vezes") → SALVAR
-- Metas e objetivos numéricos → SALVAR
+INSTRUÇÕES:
+1. Leia a mensagem com atenção
+2. Identifique QUALQUER informação sobre o usuário: preferências, quantidades, produtos, hábitos
+3. Para cada informação encontrada, crie uma entrada no array
 
-EXEMPLOS DE EXTRAÇÃO:
-Mensagem: "meus scoops de proteina no talo tem 15g"
-→ Criar: "Scoop de whey protein cheio tem 15g de proteína"
+EXEMPLOS:
+- "meu whey tem 15g" → {"type":"create","newContent":"Whey protein tem 15g de proteína por scoop","reason":"Info sobre produto"}
+- "quero proteina espaçada" → {"type":"create","newContent":"Prefere consumir proteína espaçada ao longo do dia","reason":"Preferência do usuário"}
+- "guarda na memoria" → indica que o usuário QUER que você extraia informações
 
-Mensagem: "quero o consumo de proteina espaçado"
-→ Criar: "Prefere consumir proteína de forma espaçada ao longo do dia"
-
-Mensagem: "tenho que consumir 166g de proteina"
-→ Criar: "Meta diária de proteína: 166g"
-
-NÃO EXTRAIR:
-- Pedidos de ação ("cria evento", "faz meu dia")
-- Perguntas
-- Informações já salvas nas memórias existentes
-
-FORMATO JSON OBRIGATÓRIO:
-\`\`\`json
-[
-  {"type": "create", "newContent": "Fato sobre o usuário", "reason": "Motivo"},
-  {"type": "update", "memoryId": "id", "currentContent": "antigo", "newContent": "novo", "reason": "Motivo"}
-]
-\`\`\`
-
-Se realmente não houver NADA para extrair, retorne: []
-
-RESPONDA APENAS COM O JSON.`;
+RESPOSTA (apenas JSON, sem texto):
+[`;
 
     const response = await fetch(
       `${GEMINI_API_URL}/${model}:generateContent?key=${apiKey}`,
@@ -84,7 +61,7 @@ RESPONDA APENAS COM O JSON.`;
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           generationConfig: {
-            temperature: 0.3,
+            temperature: 0.5,
             maxOutputTokens: 2048,
           },
         }),
@@ -101,13 +78,16 @@ RESPONDA APENAS COM O JSON.`;
     }
 
     const data = await response.json();
-    const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+    let responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || ']';
 
     console.log('Memory analyze - Message:', message);
     console.log('Memory analyze - Gemini response:', responseText);
 
-    // Extract JSON from response
-    const jsonMatch = responseText.match(/\[[\s\S]*\]/);
+    // Since prompt ends with "[", prepend it to complete the array
+    let jsonText = '[' + responseText;
+
+    // Try to extract JSON array
+    const jsonMatch = jsonText.match(/\[[\s\S]*?\]/);
     let actions: MemoryAction[] = [];
 
     if (jsonMatch) {
@@ -115,7 +95,18 @@ RESPONDA APENAS COM O JSON.`;
         actions = JSON.parse(jsonMatch[0]);
         console.log('Memory analyze - Parsed actions:', actions);
       } catch {
-        console.error('Failed to parse memory actions:', responseText);
+        // Try original response text if prepending didn't work
+        const originalMatch = responseText.match(/\[[\s\S]*?\]/);
+        if (originalMatch) {
+          try {
+            actions = JSON.parse(originalMatch[0]);
+            console.log('Memory analyze - Parsed from original:', actions);
+          } catch {
+            console.error('Failed to parse memory actions:', responseText);
+          }
+        } else {
+          console.error('Failed to parse memory actions:', responseText);
+        }
       }
     } else {
       console.log('Memory analyze - No JSON found in response');
