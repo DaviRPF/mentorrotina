@@ -9,6 +9,8 @@ interface CalendarContext {
   today: string;
   todayISO: string;
   currentTime: string;
+  dayOfWeek: string;
+  isWeekend: boolean;
   events: {
     id: string;
     title: string;
@@ -37,6 +39,11 @@ async function getCalendarContext(): Promise<CalendarContext> {
   const weekStart = startOfWeek(now, { weekStartsOn: 0 });
   const weekEnd = endOfWeek(addDays(now, 14), { weekStartsOn: 0 });
 
+  // Get day of week info
+  const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
+  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+  const dayName = format(now, 'EEEE', { locale: ptBR }); // "sábado", "domingo", etc.
+
   const [events, calendars] = await Promise.all([
     prisma.event.findMany({
       where: {
@@ -58,6 +65,8 @@ async function getCalendarContext(): Promise<CalendarContext> {
     today: format(now, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR }),
     todayISO: format(now, 'yyyy-MM-dd'),
     currentTime: format(now, 'HH:mm'),
+    dayOfWeek: dayName,
+    isWeekend,
     events: events.map((e) => ({
       id: e.id,
       title: e.title,
@@ -163,7 +172,13 @@ REGRAS:
 7. Se faltar informação essencial (horário), pergunte. Se tiver o básico, crie com valores padrão
 8. Cor padrão: #3b82f6 (azul). Lembrete padrão: 15 min. Sem recorrência por padrão.
 
-HORA ATUAL: {{CURRENT_TIME}}`;
+=== CONTEXTO TEMPORAL (MUITO IMPORTANTE) ===
+HOJE: {{TODAY}} ({{TODAY_ISO}})
+DIA DA SEMANA: {{DAY_OF_WEEK}}
+É FINAL DE SEMANA: {{IS_WEEKEND}}
+HORA ATUAL: {{CURRENT_TIME}}
+
+ATENÇÃO: Respeite o dia da semana! Se uma atividade é só para dias úteis (segunda a sexta), NÃO agende para sábado/domingo. Se hoje é final de semana, ajuste a rotina apropriadamente.`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -197,9 +212,11 @@ export async function POST(request: NextRequest) {
     const context = await getCalendarContext();
 
     const systemPrompt = SYSTEM_PROMPT
-      .replace('{{TODAY}}', context.today)
-      .replace('{{TODAY_ISO}}', context.todayISO)
-      .replace('{{CURRENT_TIME}}', context.currentTime);
+      .replace(/\{\{TODAY\}\}/g, context.today)
+      .replace(/\{\{TODAY_ISO\}\}/g, context.todayISO)
+      .replace(/\{\{CURRENT_TIME\}\}/g, context.currentTime)
+      .replace(/\{\{DAY_OF_WEEK\}\}/g, context.dayOfWeek)
+      .replace(/\{\{IS_WEEKEND\}\}/g, context.isWeekend ? 'SIM (final de semana)' : 'NÃO (dia útil)');
 
     // Build mentor context
     let mentorContext = '';

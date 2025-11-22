@@ -81,8 +81,11 @@ export function ChatSidebar() {
   const [editingActionId, setEditingActionId] = useState<string | null>(null);
   const [editingData, setEditingData] = useState<Partial<PendingAction['data']>>({});
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
+  const [sidebarWidth, setSidebarWidth] = useState(384); // 384px = w-96
+  const [isResizing, setIsResizing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const sidebarRef = useRef<HTMLDivElement>(null);
 
   const toggleActionExpanded = (actionId: string) => {
     setExpandedActions(prev => {
@@ -184,6 +187,34 @@ export function ChatSidebar() {
       return () => window.removeEventListener('keydown', handleKeyDown);
     }
   }, [isOpen, selectedActionId, rejectAction]);
+
+  // Handle sidebar resize
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      const newWidth = window.innerWidth - e.clientX;
+      // Min 320px, max 800px
+      setSidebarWidth(Math.min(800, Math.max(320, newWidth)));
+    };
+
+    const handleMouseUp = () => {
+      setIsResizing(false);
+    };
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'ew-resize';
+      document.body.style.userSelect = 'none';
+
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+    }
+  }, [isResizing]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -440,7 +471,16 @@ export function ChatSidebar() {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed right-0 top-0 bottom-0 w-96 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-xl z-50 flex flex-col">
+    <div
+      ref={sidebarRef}
+      className="fixed right-0 top-0 bottom-0 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-xl z-50 flex flex-col"
+      style={{ width: `${sidebarWidth}px` }}
+    >
+      {/* Resize handle */}
+      <div
+        className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500 transition-colors z-10"
+        onMouseDown={() => setIsResizing(true)}
+      />
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
         <div className="flex items-center gap-2">
