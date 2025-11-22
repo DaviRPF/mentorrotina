@@ -312,7 +312,15 @@ ${mentorContext}`;
     }
 
     const data = await response.json();
+
+    // Debug: Log raw response
+    console.log('Gemini raw response:', JSON.stringify(data, null, 2));
+
     const responseText = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+    // Debug: Log extracted text
+    console.log('Extracted text length:', responseText.length);
+    console.log('Extracted text preview:', responseText.substring(0, 200));
 
     // Parse actions - try multiple formats
     let actions: object[] = [];
