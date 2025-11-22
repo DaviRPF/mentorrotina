@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { useCalendarStore } from '@/store/calendar-store';
 import { useChatStore } from '@/store/chat-store';
+import { useDayTrackerStore } from '@/store/day-tracker-store';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { WeekView } from './WeekView';
@@ -12,6 +13,7 @@ import { AgendaView } from './AgendaView';
 import { EventModal } from '@/components/modals/EventModal';
 import { SettingsModal } from '@/components/modals/SettingsModal';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
+import { DayTrackerModal } from '@/components/day-tracker/DayTrackerModal';
 import { NotificationProvider } from './NotificationProvider';
 
 export function Calendar() {
@@ -28,6 +30,7 @@ export function Calendar() {
   } = useCalendarStore();
 
   const { toggleOpen: toggleChat } = useChatStore();
+  const { fetchSessions, fetchReports } = useDayTrackerStore();
 
   // Fetch initial data
   useEffect(() => {
@@ -57,6 +60,9 @@ export function Calendar() {
             }))
           );
         }
+
+        // Fetch day tracker sessions and reports
+        await Promise.all([fetchSessions(), fetchReports()]);
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -65,7 +71,7 @@ export function Calendar() {
     };
 
     fetchData();
-  }, [setCalendars, setEvents, setIsLoading]);
+  }, [setCalendars, setEvents, setIsLoading, fetchSessions, fetchReports]);
 
   // Keyboard shortcuts
   const handleKeyDown = useCallback(
@@ -147,6 +153,7 @@ export function Calendar() {
       <EventModal />
       <SettingsModal />
       <ChatSidebar />
+      <DayTrackerModal />
       <NotificationProvider />
     </div>
   );

@@ -54,11 +54,12 @@ model Event {
 
 // Chat conversations
 model Conversation {
-  id        String    @id @default(uuid())
-  title     String    @default("Nova conversa")
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  messages  Message[]
+  id          String       @id @default(uuid())
+  title       String       @default("Nova conversa")
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  messages    Message[]
+  daySession  DaySession[]  // Relação com sessões de acompanhamento
 }
 
 model Message {
@@ -82,4 +83,46 @@ model UserSettings {
   bookSummaries       String   @default("[]") // JSON array
   timeContexts        String   @default("{}") // JSON object
   updatedAt           DateTime @updatedAt
+}
+
+// Day Tracker - Sessão de acompanhamento do dia
+model DaySession {
+  id             String       @id @default(uuid())
+  date           DateTime     // Qual dia está sendo acompanhado
+  status         String       @default("active") // 'active' | 'completed'
+
+  // Conversa do acompanhamento
+  conversationId String?
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+
+  // Relatório gerado
+  report         DayReport?
+
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+}
+
+// Relatório do dia
+model DayReport {
+  id             String     @id @default(uuid())
+  daySessionId   String     @unique
+  daySession     DaySession @relation(fields: [daySessionId], references: [id], onDelete: Cascade)
+
+  // Conteúdo do relatório
+  summary        String     // Resumo geral do dia
+  completedTasks String     @default("[]") // JSON array - o que foi feito
+  skippedTasks   String     @default("[]") // JSON array - o que pulou
+  highlights     String     @default("[]") // JSON array - momentos positivos
+  challenges     String     @default("[]") // JSON array - dificuldades
+  insights       String     @default("[]") // JSON array - aprendizados/insights
+
+  // Métricas
+  plannedEvents    Int      @default(0)
+  completedEvents  Int      @default(0)
+  completionRate   Float    @default(0) // 0-100
+  energyLevel      Int?     // 1-5 auto-avaliação
+  moodRating       Int?     // 1-5 auto-avaliação
+
+  createdAt      DateTime   @default(now())
+  updatedAt      DateTime   @updatedAt
 }

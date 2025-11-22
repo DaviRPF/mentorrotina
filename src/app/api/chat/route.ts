@@ -201,6 +201,43 @@ HORA ATUAL: {{CURRENT_TIME}}
 
 ATENÇÃO: Respeite o dia da semana! Se uma atividade é só para dias úteis (segunda a sexta), NÃO agende para sábado/domingo. Se hoje é final de semana, ajuste a rotina apropriadamente.`;
 
+const DAY_TRACKER_PROMPT = `Você é o Companheiro de Dia do MentorRotina. Seu papel é ACOMPANHAR o usuário ao longo do dia, ajudando-o a manter o foco e completar suas atividades.
+
+=== SEU PAPEL ===
+- O usuário vai reportar o que está fazendo ou já fez
+- Você confirma, motiva e dá dicas práticas
+- Você mostra qual é a PRÓXIMA atividade do dia
+- Você ajuda a manter a energia e foco
+
+=== FORMATO DAS RESPOSTAS ===
+1. Reconheça o que o usuário fez (breve, positivo)
+2. Dê uma dica rápida se apropriado (baseado nas memórias/orientações)
+3. Indique o PRÓXIMO passo do dia
+
+Exemplo:
+Usuário: "Terminei a academia"
+Você: "💪 Ótimo treino! Lembre-se de se hidratar bem agora.
+📍 Próximo: Almoço às 12:30. Você tem 45 minutos para tomar banho e se preparar."
+
+=== REGRAS ===
+- Seja CONCISO - respostas curtas e diretas
+- Use emojis para deixar mais visual
+- Sempre mencione o PRÓXIMO compromisso quando relevante
+- Motive mas não seja exagerado
+- Se o usuário pulou algo, não julgue - ajude a replanejar
+- Use as memórias e orientações para personalizar conselhos
+
+=== CONTEXTO DO DIA ===
+DATA: {{DATE}}
+EVENTOS PLANEJADOS:
+{{EVENTS}}
+
+MEMÓRIAS DO USUÁRIO:
+{{MEMORIES}}
+
+ORIENTAÇÕES:
+{{ORIENTATIONS}}`;
+
 export async function POST(request: NextRequest) {
   try {
     const apiKey = process.env.GEMINI_API_KEY;
@@ -221,6 +258,8 @@ export async function POST(request: NextRequest) {
       orientations = '',
       bookReferences = [],
       timeContexts = [],
+      isDayTracker = false,
+      dayTrackerContext = null,
     } = body;
 
     if (!message) {
@@ -309,25 +348,58 @@ ${context.events.length > 0
   : 'Nenhum evento.'}
 ${mentorContext}`;
 
-    const contents = [
-      {
-        role: 'user',
-        parts: [{ text: systemPrompt + '\n\n' + calendarContextMessage }],
-      },
-      {
-        role: 'model',
-        parts: [{ text: 'Entendido! Pronto para ajudar com seu calendário. O que você precisa?' }],
-      },
-      // Limit history to last 10 messages to prevent context overflow
-      ...history.slice(-10).map((msg: { role: string; content: string }) => ({
-        role: msg.role === 'assistant' ? 'model' : 'user',
-        parts: [{ text: msg.content }],
-      })),
-      {
-        role: 'user',
-        parts: [{ text: message }],
-      },
-    ];
+    // Build contents based on whether it's day tracker or regular chat
+    let contents;
+
+    if (isDayTracker && dayTrackerContext) {
+      // Day tracker uses a different prompt focused on day accompaniment
+      const dayTrackerPrompt = DAY_TRACKER_PROMPT
+        .replace('{{DATE}}', dayTrackerContext.date ? format(new Date(dayTrackerContext.date), "EEEE, d 'de' MMMM", { locale: ptBR }) : context.today)
+        .replace('{{EVENTS}}', dayTrackerContext.events || 'Nenhum evento planejado')
+        .replace('{{MEMORIES}}', dayTrackerContext.memories || 'Nenhuma memória')
+        .replace('{{ORIENTATIONS}}', dayTrackerContext.orientations || 'Nenhuma orientação');
+
+      contents = [
+        {
+          role: 'user',
+          parts: [{ text: dayTrackerPrompt }],
+        },
+        {
+          role: 'model',
+          parts: [{ text: 'Olá! Estou aqui para acompanhar seu dia. Me conte o que você já fez ou está fazendo agora! 🎯' }],
+        },
+        // History from day tracker conversation
+        ...history.slice(-20).map((msg: { role: string; content: string }) => ({
+          role: msg.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: msg.content }],
+        })),
+        {
+          role: 'user',
+          parts: [{ text: message }],
+        },
+      ];
+    } else {
+      // Regular calendar assistant
+      contents = [
+        {
+          role: 'user',
+          parts: [{ text: systemPrompt + '\n\n' + calendarContextMessage }],
+        },
+        {
+          role: 'model',
+          parts: [{ text: 'Entendido! Pronto para ajudar com seu calendário. O que você precisa?' }],
+        },
+        // Limit history to last 10 messages to prevent context overflow
+        ...history.slice(-10).map((msg: { role: string; content: string }) => ({
+          role: msg.role === 'assistant' ? 'model' : 'user',
+          parts: [{ text: msg.content }],
+        })),
+        {
+          role: 'user',
+          parts: [{ text: message }],
+        },
+      ];
+    }
 
     const response = await fetch(
       `${GEMINI_API_URL}/${model}:generateContent?key=${apiKey}`,

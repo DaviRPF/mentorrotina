@@ -11,7 +11,9 @@ import {
   addMinutes,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Flag } from 'lucide-react';
 import { useCalendarStore } from '@/store/calendar-store';
+import { useDayTrackerStore } from '@/store/day-tracker-store';
 import { EventBlock } from './EventBlock';
 import { CalendarEvent } from '@/types';
 import { cn } from '@/lib/utils';
@@ -34,6 +36,8 @@ export function WeekView() {
     events,
     calendars,
   } = useCalendarStore();
+
+  const { openTracker, sessions } = useDayTrackerStore();
 
   // Janela deslizante de 7 dias a partir da data atual
   const weekStart = currentDate;
@@ -170,26 +174,52 @@ export function WeekView() {
       {/* Header with day names */}
       <div className="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
         <div className="w-[60px] flex-shrink-0" />
-        {days.map((day) => (
-          <div
-            key={day.toISOString()}
-            className="flex-1 text-center py-2 border-l border-gray-200 dark:border-gray-700"
-          >
-            <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">
-              {format(day, 'EEE', { locale: ptBR })}
-            </div>
+        {days.map((day) => {
+          // Check if day has an active/completed session
+          const daySession = sessions.find(s => {
+            const sessionDate = new Date(s.date);
+            return isSameDay(sessionDate, day);
+          });
+          const hasReport = daySession?.status === 'completed';
+
+          return (
             <div
-              className={cn(
-                'text-2xl font-medium mt-1',
-                isSameDay(day, today)
-                  ? 'w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center mx-auto'
-                  : 'text-gray-900 dark:text-white'
-              )}
+              key={day.toISOString()}
+              className="flex-1 text-center py-2 border-l border-gray-200 dark:border-gray-700 relative group"
             >
-              {format(day, 'd')}
+              {/* Day Tracker Button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  openTracker(day);
+                }}
+                className={cn(
+                  'absolute top-1 right-1 p-1 rounded-full transition-all',
+                  hasReport
+                    ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+                    : 'opacity-0 group-hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-green-600'
+                )}
+                title={hasReport ? 'Ver relatório do dia' : 'Acompanhar dia'}
+              >
+                <Flag className="w-3.5 h-3.5" />
+              </button>
+
+              <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">
+                {format(day, 'EEE', { locale: ptBR })}
+              </div>
+              <div
+                className={cn(
+                  'text-2xl font-medium mt-1',
+                  isSameDay(day, today)
+                    ? 'w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center mx-auto'
+                    : 'text-gray-900 dark:text-white'
+                )}
+              >
+                {format(day, 'd')}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
       {/* All day events row */}
