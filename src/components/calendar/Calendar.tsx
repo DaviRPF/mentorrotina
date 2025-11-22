@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { useCalendarStore } from '@/store/calendar-store';
+import { useChatStore } from '@/store/chat-store';
 import { Header } from './Header';
 import { Sidebar } from './Sidebar';
 import { WeekView } from './WeekView';
@@ -9,6 +10,8 @@ import { DayView } from './DayView';
 import { MonthView } from './MonthView';
 import { AgendaView } from './AgendaView';
 import { EventModal } from '@/components/modals/EventModal';
+import { SettingsModal } from '@/components/modals/SettingsModal';
+import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { NotificationProvider } from './NotificationProvider';
 
 export function Calendar() {
@@ -23,6 +26,8 @@ export function Calendar() {
     goToToday,
     setView,
   } = useCalendarStore();
+
+  const { toggleOpen: toggleChat } = useChatStore();
 
   // Fetch initial data
   useEffect(() => {
@@ -101,9 +106,13 @@ export function Calendar() {
         case 'A':
           setView('agenda');
           break;
+        case 'i':
+        case 'I':
+          toggleChat();
+          break;
       }
     },
-    [goToPrevious, goToNext, goToToday, setView]
+    [goToPrevious, goToNext, goToToday, setView, toggleChat]
   );
 
   useEffect(() => {
@@ -136,6 +145,8 @@ export function Calendar() {
         </main>
       </div>
       <EventModal />
+      <SettingsModal />
+      <ChatSidebar />
       <NotificationProvider />
     </div>
   );

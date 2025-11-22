@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Search, Menu, Sun, Moon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Search, Menu, Sun, Moon, Settings, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useCalendarStore } from '@/store/calendar-store';
+import { useSettingsStore } from '@/store/settings-store';
+import { useChatStore } from '@/store/chat-store';
 import { Button } from '@/components/ui/Button';
 import { ViewType } from '@/types';
 
@@ -25,6 +27,9 @@ export function Header({ onMenuClick }: HeaderProps) {
     searchQuery,
     setSearchQuery,
   } = useCalendarStore();
+
+  const { setIsSettingsOpen, aiEnabled } = useSettingsStore();
+  const { toggleOpen: toggleChat, isOpen: isChatOpen } = useChatStore();
 
   useEffect(() => {
     // Check initial theme preference
@@ -110,7 +115,7 @@ export function Header({ onMenuClick }: HeaderProps) {
         </h2>
       </div>
 
-      <div className="flex items-center gap-2 sm:gap-4">
+      <div className="flex items-center gap-2 sm:gap-3">
         <div className="relative hidden md:block">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
           <input
@@ -118,7 +123,7 @@ export function Header({ onMenuClick }: HeaderProps) {
             placeholder="Buscar eventos..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 pr-4 py-2 w-64 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="pl-10 pr-4 py-2 w-56 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
@@ -152,6 +157,31 @@ export function Header({ onMenuClick }: HeaderProps) {
           ))}
         </select>
 
+        {/* AI Chat Button */}
+        {aiEnabled && (
+          <button
+            onClick={toggleChat}
+            className={`p-2 rounded-lg transition-colors ${
+              isChatOpen
+                ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white'
+                : 'hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-600 dark:text-gray-400'
+            }`}
+            title="Assistente IA"
+          >
+            <Sparkles className="w-5 h-5" />
+          </button>
+        )}
+
+        {/* Settings Button */}
+        <button
+          onClick={() => setIsSettingsOpen(true)}
+          className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+          title="Configurações"
+        >
+          <Settings className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+        </button>
+
+        {/* Dark Mode Button */}
         <button
           onClick={toggleDarkMode}
           className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
