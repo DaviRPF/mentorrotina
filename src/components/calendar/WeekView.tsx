@@ -2,8 +2,7 @@
 
 import { useRef, useState, useCallback, useEffect } from 'react';
 import {
-  startOfWeek,
-  endOfWeek,
+  addDays,
   eachDayOfInterval,
   format,
   isSameDay,
@@ -36,8 +35,9 @@ export function WeekView() {
     calendars,
   } = useCalendarStore();
 
-  const weekStart = startOfWeek(currentDate, { weekStartsOn: 0 });
-  const weekEnd = endOfWeek(currentDate, { weekStartsOn: 0 });
+  // Janela deslizante de 7 dias a partir da data atual
+  const weekStart = currentDate;
+  const weekEnd = addDays(currentDate, 6);
   const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
   const today = new Date();
 
