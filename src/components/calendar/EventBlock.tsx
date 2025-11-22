@@ -119,8 +119,23 @@ export function EventBlock({ event, hourHeight }: EventBlockProps) {
         const hour = Math.floor(relativeY / hourHeight);
         const minutes = Math.round(((relativeY % hourHeight) / hourHeight) * 60 / 15) * 15;
 
+        // Detect which day column we're over
+        const dayColumns = gridContainer.querySelectorAll('.day-column');
+        let targetDate: Date | null = null;
+
+        for (const col of dayColumns) {
+          const colRect = col.getBoundingClientRect();
+          if (e.clientX >= colRect.left && e.clientX <= colRect.right) {
+            const dateStr = col.getAttribute('data-date');
+            if (dateStr) {
+              targetDate = new Date(dateStr);
+            }
+            break;
+          }
+        }
+
         const eventDuration = endTime.getTime() - startTime.getTime();
-        const newStartTime = new Date(startTime);
+        const newStartTime = targetDate ? new Date(targetDate) : new Date(startTime);
         newStartTime.setHours(hour, minutes, 0, 0);
         const newEndTime = new Date(newStartTime.getTime() + eventDuration);
 

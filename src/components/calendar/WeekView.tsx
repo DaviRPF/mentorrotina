@@ -253,7 +253,8 @@ export function WeekView() {
               return (
                 <div
                   key={day.toISOString()}
-                  className="flex-1 border-l border-gray-200 dark:border-gray-700 relative"
+                  data-date={day.toISOString()}
+                  className="flex-1 border-l border-gray-200 dark:border-gray-700 relative day-column"
                 >
                   {/* Hour lines */}
                   {HOURS.map((hour) => (
