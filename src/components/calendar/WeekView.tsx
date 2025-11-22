@@ -9,6 +9,8 @@ import {
   setHours,
   setMinutes,
   addMinutes,
+  startOfDay,
+  endOfDay,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Flag } from 'lucide-react';
@@ -40,8 +42,8 @@ export function WeekView() {
   const { openTracker, sessions } = useDayTrackerStore();
 
   // Janela deslizante de 7 dias a partir da data atual
-  const weekStart = currentDate;
-  const weekEnd = addDays(currentDate, 6);
+  const weekStart = startOfDay(currentDate);
+  const weekEnd = endOfDay(addDays(currentDate, 6));
   const days = eachDayOfInterval({ start: weekStart, end: weekEnd });
   const today = new Date();
 
