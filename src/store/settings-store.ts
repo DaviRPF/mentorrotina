@@ -46,6 +46,9 @@ export interface Settings {
   geminiModel: GeminiModel;
   aiEnabled: boolean;
 
+  // Personal Context (immutable, doesn't depend on time)
+  personalContext: string;
+
   // AI Mentor Orientations
   generalOrientations: string;
   bookSummaries: BookSummary[];
@@ -106,6 +109,9 @@ const defaultSettings: Settings = {
   // AI
   geminiModel: 'gemini-2.5-flash',
   aiEnabled: true,
+
+  // Personal Context
+  personalContext: '',
 
   // AI Mentor Orientations
   generalOrientations: '',

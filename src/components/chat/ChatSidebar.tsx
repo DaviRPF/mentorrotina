@@ -99,7 +99,7 @@ export function ChatSidebar() {
   } = useChatStore();
 
   const { addEvent, updateEvent, removeEvent, events, calendars, setEvents } = useCalendarStore();
-  const { geminiModel, aiEnabled, generalOrientations, bookSummaries, timeContexts } = useSettingsStore();
+  const { geminiModel, aiEnabled, personalContext, generalOrientations, bookSummaries, timeContexts } = useSettingsStore();
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -133,6 +133,8 @@ export function ChatSidebar() {
             role: m.role,
             content: m.content,
           })),
+          // Personal context (immutable)
+          personalContext: personalContext || '',
           // Mentor orientations
           orientations: generalOrientations,
           bookSummaries: bookSummaries.map(b => ({ title: b.title, summary: b.summary })),

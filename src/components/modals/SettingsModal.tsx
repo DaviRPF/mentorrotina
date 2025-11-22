@@ -43,6 +43,7 @@ export function SettingsModal() {
     geminiModel,
     aiEnabled,
     // Mentor/Orientations
+    personalContext,
     generalOrientations,
     bookSummaries,
     addBookSummary,
@@ -321,17 +322,34 @@ export function SettingsModal() {
             <div className="space-y-6">
               <div>
                 <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                  Contexto Pessoal
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Informações permanentes sobre você que a IA deve sempre considerar.
+                  Diferente das metas temporais, este contexto não expira.
+                </p>
+                <textarea
+                  value={personalContext}
+                  onChange={(e) => updateSettings({ personalContext: e.target.value })}
+                  placeholder="Ex: Sou estudante de medicina, trabalho meio período, tenho TDAH e preciso de pausas frequentes, sou introvertido e prefiro atividades solo..."
+                  rows={4}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">
                   Orientações Gerais
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  Escreva instruções, objetivos e diretrizes que o mentor IA deve seguir ao ajudar você.
-                  Por exemplo: seus horários preferidos, objetivos de vida, hábitos que quer desenvolver, etc.
+                  Instruções e diretrizes que o mentor IA deve seguir ao ajudar você.
+                  Por exemplo: horários preferidos, objetivos de vida, hábitos que quer desenvolver.
                 </p>
                 <textarea
                   value={generalOrientations}
                   onChange={(e) => updateSettings({ generalOrientations: e.target.value })}
                   placeholder="Ex: Quero acordar às 6h e fazer exercícios. Meu objetivo é estudar 2h por dia. Prefiro reuniões pela manhã..."
-                  rows={5}
+                  rows={4}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
