@@ -18,6 +18,9 @@ export function EventBlock({ event, hourHeight }: EventBlockProps) {
   const [resizeType, setResizeType] = useState<'top' | 'bottom' | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
+  const [isMouseDown, setIsMouseDown] = useState(false);
+  const [hasMoved, setHasMoved] = useState(false);
+  const mouseDownPos = useRef<{ x: number; y: number } | null>(null);
 
   const { setSelectedEvent, setIsEventModalOpen, updateEvent, events, setEvents } = useCalendarStore();
   const conflicts = useConflicts(event);
@@ -34,7 +37,8 @@ export function EventBlock({ event, hourHeight }: EventBlockProps) {
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!isResizing && !isDragging) {
+    // Only open modal if user didn't drag/resize
+    if (!hasMoved && !isResizing) {
       setSelectedEvent(event);
       setIsEventModalOpen(true);
     }
@@ -48,8 +52,10 @@ export function EventBlock({ event, hourHeight }: EventBlockProps) {
   };
 
   const handleDragStart = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    e.preventDefault();
+    // Don't prevent default or stop propagation here - let click work
+    mouseDownPos.current = { x: e.clientX, y: e.clientY };
+    setHasMoved(false);
+    setIsMouseDown(true);
 
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
@@ -58,13 +64,22 @@ export function EventBlock({ event, hourHeight }: EventBlockProps) {
         y: e.clientY - rect.top,
       });
     }
-    setIsDragging(true);
   };
 
   useEffect(() => {
-    if (!isResizing && !isDragging) return;
-
     const handleMouseMove = async (e: MouseEvent) => {
+      // Detect if user started dragging (moved mouse after mousedown)
+      if (isMouseDown && mouseDownPos.current && !isDragging && !isResizing) {
+        const dx = Math.abs(e.clientX - mouseDownPos.current.x);
+        const dy = Math.abs(e.clientY - mouseDownPos.current.y);
+        // Only start drag if moved more than 5px
+        if (dx > 5 || dy > 5) {
+          setIsDragging(true);
+          setHasMoved(true);
+        }
+        return;
+      }
+
       if (isResizing && resizeType) {
         const gridContainer = containerRef.current?.closest('.flex-1.overflow-auto');
         if (!gridContainer) return;
@@ -142,19 +157,24 @@ export function EventBlock({ event, hourHeight }: EventBlockProps) {
         }
       }
 
+      mouseDownPos.current = null;
+      setIsMouseDown(false);
       setIsResizing(false);
       setResizeType(null);
       setIsDragging(false);
     };
 
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
+    // Listen for mouse events when mouse is down or dragging/resizing
+    if (isMouseDown || isResizing || isDragging) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
 
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-  }, [isResizing, isDragging, resizeType, hourHeight, startTime, endTime, event, events, setEvents, dragOffset]);
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, [isMouseDown, isResizing, isDragging, resizeType, hourHeight, startTime, endTime, event, events, setEvents, dragOffset]);
 
   const isShort = height < 40;
 

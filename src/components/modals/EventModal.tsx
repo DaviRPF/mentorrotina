@@ -111,6 +111,30 @@ export function EventModal() {
     }
   }, [selectedEvent, newEventStart, newEventEnd, calendars]);
 
+  // Handle Delete key to delete event
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle if modal is open, editing an event, and not in an input
+      if (!isEventModalOpen || !selectedEvent) return;
+
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') return;
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        e.preventDefault();
+        // For recurring events, show options. For single events, delete directly
+        if (isRecurringInstance || selectedEvent.recurrenceRule) {
+          setShowDeleteOptions(true);
+        } else {
+          handleDelete('all');
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isEventModalOpen, selectedEvent, isRecurringInstance]);
+
   const handleClose = () => {
     setIsEventModalOpen(false);
     setSelectedEvent(null);
