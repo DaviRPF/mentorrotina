@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import prisma from '@/lib/prisma';
 import { startOfDay, endOfDay } from 'date-fns';
 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
