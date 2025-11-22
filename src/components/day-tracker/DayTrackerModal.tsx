@@ -66,7 +66,11 @@ export function DayTrackerModal() {
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    if (!input.trim() || isLoading || !currentSession?.conversationId) return;
+    console.log('handleSubmit called', { input: input.trim(), isLoading, currentSession, conversationId: currentSession?.conversationId });
+    if (!input.trim() || isLoading || !currentSession?.conversationId) {
+      console.log('Blocked by condition', { hasInput: !!input.trim(), isLoading, hasConversationId: !!currentSession?.conversationId });
+      return;
+    }
 
     const userMessage = input.trim();
     setInput('');
@@ -103,7 +107,7 @@ export function DayTrackerModal() {
         ? memories.map(m => `- ${m.content}`).join('\n')
         : '';
 
-      const conversationHistory = currentSession.conversation?.messages
+      const history = currentSession.conversation?.messages
         .map(m => ({ role: m.role, content: m.content })) || [];
 
       // Call chat API with day tracker context
@@ -112,7 +116,7 @@ export function DayTrackerModal() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: userMessage,
-          conversationHistory,
+          history,
           isDayTracker: true,
           dayTrackerContext: {
             date: selectedDate?.toISOString(),
@@ -141,6 +145,9 @@ export function DayTrackerModal() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ role: 'assistant', content: data.response }),
         });
+      } else {
+        const errorData = await response.json();
+        console.error('Chat API error:', response.status, errorData);
       }
     } catch (error) {
       console.error('Error sending message:', error);
