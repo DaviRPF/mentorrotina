@@ -83,6 +83,8 @@ export function ChatSidebar() {
   const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(384); // 384px = w-96
   const [isResizing, setIsResizing] = useState(false);
+  const [actionsHeight, setActionsHeight] = useState(256); // 256px default
+  const [isResizingActions, setIsResizingActions] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -215,6 +217,35 @@ export function ChatSidebar() {
       };
     }
   }, [isResizing]);
+
+  // Handle pending actions resize
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingActions || !sidebarRef.current) return;
+      const sidebarRect = sidebarRef.current.getBoundingClientRect();
+      const newHeight = sidebarRect.bottom - e.clientY;
+      // Min 100px, max 600px
+      setActionsHeight(Math.min(600, Math.max(100, newHeight)));
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingActions(false);
+    };
+
+    if (isResizingActions) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'ns-resize';
+      document.body.style.userSelect = 'none';
+
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+    }
+  }, [isResizingActions]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -693,8 +724,16 @@ export function ChatSidebar() {
 
           {/* Pending Actions */}
           {pending.length > 0 && (
-            <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-800/50">
-              <div className="flex items-center justify-between mb-3">
+            <div
+              className="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 relative flex flex-col"
+              style={{ height: `${actionsHeight}px`, minHeight: '100px' }}
+            >
+              {/* Resize handle */}
+              <div
+                className="absolute top-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-blue-500 transition-colors z-10"
+                onMouseDown={() => setIsResizingActions(true)}
+              />
+              <div className="flex items-center justify-between p-4 pb-2">
                 <h3 className="text-sm font-medium text-gray-900 dark:text-white">
                   Ações Pendentes ({pending.length})
                 </h3>
@@ -714,7 +753,7 @@ export function ChatSidebar() {
                 </div>
               </div>
 
-              <div className="space-y-2 max-h-64 overflow-y-auto">
+              <div className="space-y-2 overflow-y-auto flex-1 px-4 pb-4">
             {pending.map((action) => {
               const isExpanded = expandedActions.has(action.id);
               const colorName = action.data.color ? COLOR_NAMES[action.data.color.toLowerCase()] || action.data.color : null;
