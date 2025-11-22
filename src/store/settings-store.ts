@@ -12,10 +12,20 @@ export const GEMINI_MODELS = [
 
 export type GeminiModel = typeof GEMINI_MODELS[number]['id'];
 
+export interface BookSummary {
+  id: string;
+  title: string;
+  summary: string;
+}
+
 export interface Settings {
   // AI Settings
   geminiModel: GeminiModel;
   aiEnabled: boolean;
+
+  // AI Mentor Orientations
+  generalOrientations: string;
+  bookSummaries: BookSummary[];
 
   // Calendar Settings
   weekStartsOn: 0 | 1; // 0 = Sunday, 1 = Monday
@@ -47,12 +57,21 @@ interface SettingsStore extends Settings {
   resetSettings: () => void;
   isSettingsOpen: boolean;
   setIsSettingsOpen: (isOpen: boolean) => void;
+
+  // Book summaries actions
+  addBookSummary: (title: string, summary: string) => void;
+  updateBookSummary: (id: string, title: string, summary: string) => void;
+  removeBookSummary: (id: string) => void;
 }
 
 const defaultSettings: Settings = {
   // AI
   geminiModel: 'gemini-2.5-flash',
   aiEnabled: true,
+
+  // AI Mentor Orientations
+  generalOrientations: '',
+  bookSummaries: [],
 
   // Calendar
   weekStartsOn: 0,
@@ -89,6 +108,23 @@ export const useSettingsStore = create<SettingsStore>()(
       resetSettings: () => set({ ...defaultSettings }),
 
       setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
+
+      addBookSummary: (title, summary) => set((state) => ({
+        bookSummaries: [
+          ...state.bookSummaries,
+          { id: crypto.randomUUID(), title, summary }
+        ]
+      })),
+
+      updateBookSummary: (id, title, summary) => set((state) => ({
+        bookSummaries: state.bookSummaries.map((book) =>
+          book.id === id ? { ...book, title, summary } : book
+        )
+      })),
+
+      removeBookSummary: (id) => set((state) => ({
+        bookSummaries: state.bookSummaries.filter((book) => book.id !== id)
+      })),
     }),
     {
       name: 'mentor-rotina-settings',

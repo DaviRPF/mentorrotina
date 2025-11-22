@@ -1,15 +1,16 @@
 'use client';
 
 import { Modal } from '@/components/ui/Modal';
-import { useSettingsStore, GEMINI_MODELS, GeminiModel } from '@/store/settings-store';
-import { Settings, Bot, Calendar, Bell, Clock, Palette, RotateCcw } from 'lucide-react';
+import { useSettingsStore, GEMINI_MODELS, GeminiModel, BookSummary } from '@/store/settings-store';
+import { Bot, Calendar, Bell, Palette, RotateCcw, BookOpen, Plus, X, ChevronDown, ChevronUp, Trash2, GraduationCap } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
 
-type TabId = 'ai' | 'calendar' | 'appearance' | 'notifications';
+type TabId = 'ai' | 'mentor' | 'calendar' | 'appearance' | 'notifications';
 
 const tabs: { id: TabId; label: string; icon: React.ReactNode }[] = [
   { id: 'ai', label: 'Inteligência Artificial', icon: <Bot className="w-4 h-4" /> },
+  { id: 'mentor', label: 'Orientações', icon: <GraduationCap className="w-4 h-4" /> },
   { id: 'calendar', label: 'Calendário', icon: <Calendar className="w-4 h-4" /> },
   { id: 'appearance', label: 'Aparência', icon: <Palette className="w-4 h-4" /> },
   { id: 'notifications', label: 'Notificações', icon: <Bell className="w-4 h-4" /> },
@@ -24,6 +25,12 @@ export function SettingsModal() {
     // AI
     geminiModel,
     aiEnabled,
+    // Mentor/Orientations
+    generalOrientations,
+    bookSummaries,
+    addBookSummary,
+    updateBookSummary,
+    removeBookSummary,
     // Calendar
     weekStartsOn,
     defaultView,
@@ -45,6 +52,62 @@ export function SettingsModal() {
   } = useSettingsStore();
 
   const [activeTab, setActiveTab] = useState<TabId>('ai');
+
+  // State for adding/editing book summaries
+  const [isAddingBook, setIsAddingBook] = useState(false);
+  const [editingBookId, setEditingBookId] = useState<string | null>(null);
+  const [newBookTitle, setNewBookTitle] = useState('');
+  const [newBookSummary, setNewBookSummary] = useState('');
+  const [expandedBooks, setExpandedBooks] = useState<Set<string>>(new Set());
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
+  const toggleBookExpanded = (bookId: string) => {
+    setExpandedBooks(prev => {
+      const next = new Set(prev);
+      if (next.has(bookId)) {
+        next.delete(bookId);
+      } else {
+        next.add(bookId);
+      }
+      return next;
+    });
+  };
+
+  const handleAddBook = () => {
+    if (newBookTitle.trim() && newBookSummary.trim()) {
+      addBookSummary(newBookTitle.trim(), newBookSummary.trim());
+      setNewBookTitle('');
+      setNewBookSummary('');
+      setIsAddingBook(false);
+    }
+  };
+
+  const handleEditBook = (book: BookSummary) => {
+    setEditingBookId(book.id);
+    setNewBookTitle(book.title);
+    setNewBookSummary(book.summary);
+  };
+
+  const handleSaveEdit = () => {
+    if (editingBookId && newBookTitle.trim() && newBookSummary.trim()) {
+      updateBookSummary(editingBookId, newBookTitle.trim(), newBookSummary.trim());
+      setEditingBookId(null);
+      setNewBookTitle('');
+      setNewBookSummary('');
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingBookId(null);
+    setNewBookTitle('');
+    setNewBookSummary('');
+    setIsAddingBook(false);
+  };
+
+  const handleDeleteBook = (bookId: string) => {
+    removeBookSummary(bookId);
+    setDeleteConfirmId(null);
+  };
 
   const handleClose = () => {
     setIsSettingsOpen(false);
@@ -164,6 +227,185 @@ export function SettingsModal() {
 
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-3">
                   A API key deve ser configurada na variável de ambiente GEMINI_API_KEY
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Mentor/Orientations Tab */}
+          {activeTab === 'mentor' && (
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-sm font-medium text-gray-900 dark:text-white mb-1">
+                  Orientações Gerais
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Escreva instruções, objetivos e diretrizes que o mentor IA deve seguir ao ajudar você.
+                  Por exemplo: seus horários preferidos, objetivos de vida, hábitos que quer desenvolver, etc.
+                </p>
+                <textarea
+                  value={generalOrientations}
+                  onChange={(e) => updateSettings({ generalOrientations: e.target.value })}
+                  placeholder="Ex: Quero acordar às 6h e fazer exercícios. Meu objetivo é estudar 2h por dia. Prefiro reuniões pela manhã..."
+                  rows={5}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <h3 className="text-sm font-medium text-gray-900 dark:text-white">
+                    Resumos de Livros
+                  </h3>
+                  {!isAddingBook && !editingBookId && (
+                    <button
+                      onClick={() => setIsAddingBook(true)}
+                      className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-medium"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Adicionar livro
+                    </button>
+                  )}
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
+                  Adicione resumos de livros sobre produtividade, hábitos ou desenvolvimento pessoal.
+                  O mentor IA usará esses conhecimentos para dar conselhos mais personalizados.
+                </p>
+
+                {/* Add/Edit Book Form */}
+                {(isAddingBook || editingBookId) && (
+                  <div className="p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg border border-gray-200 dark:border-gray-700 mb-3">
+                    <div className="space-y-3">
+                      <div>
+                        <label className="block text-xs text-gray-700 dark:text-gray-300 mb-1">
+                          Título do livro
+                        </label>
+                        <input
+                          type="text"
+                          value={newBookTitle}
+                          onChange={(e) => setNewBookTitle(e.target.value)}
+                          placeholder="Ex: Atomic Habits"
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-700 dark:text-gray-300 mb-1">
+                          Resumo / Principais lições
+                        </label>
+                        <textarea
+                          value={newBookSummary}
+                          onChange={(e) => setNewBookSummary(e.target.value)}
+                          placeholder="Ex: O livro ensina que pequenos hábitos de 1% ao dia geram grandes resultados. Os 4 passos para criar um hábito são: deixar óbvio, tornar atrativo, facilitar e tornar satisfatório..."
+                          rows={4}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        />
+                      </div>
+                      <div className="flex justify-end gap-2">
+                        <button
+                          onClick={handleCancelEdit}
+                          className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={editingBookId ? handleSaveEdit : handleAddBook}
+                          disabled={!newBookTitle.trim() || !newBookSummary.trim()}
+                          className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          {editingBookId ? 'Salvar' : 'Adicionar'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Book List */}
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {bookSummaries.length === 0 && !isAddingBook && (
+                    <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
+                      Nenhum livro adicionado ainda.
+                    </p>
+                  )}
+
+                  {bookSummaries.map((book) => (
+                    <div
+                      key={book.id}
+                      className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+                    >
+                      {/* Delete Confirmation */}
+                      {deleteConfirmId === book.id ? (
+                        <div className="p-3 bg-red-50 dark:bg-red-900/20">
+                          <p className="text-sm text-red-700 dark:text-red-400 mb-2">
+                            Tem certeza que deseja excluir "{book.title}"?
+                          </p>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              onClick={() => setDeleteConfirmId(null)}
+                              className="px-3 py-1 text-xs text-gray-600 hover:text-gray-800 dark:text-gray-400"
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              onClick={() => handleDeleteBook(book.id)}
+                              className="px-3 py-1 text-xs bg-red-600 text-white rounded hover:bg-red-700"
+                            >
+                              Excluir
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2 p-2">
+                            <button
+                              onClick={() => toggleBookExpanded(book.id)}
+                              className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                            >
+                              {expandedBooks.has(book.id) ? (
+                                <ChevronUp className="w-4 h-4 text-gray-500" />
+                              ) : (
+                                <ChevronDown className="w-4 h-4 text-gray-500" />
+                              )}
+                            </button>
+                            <BookOpen className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                            <span className="flex-1 text-sm font-medium text-gray-900 dark:text-white truncate">
+                              {book.title}
+                            </span>
+                            <button
+                              onClick={() => handleEditBook(book)}
+                              className="p-1 text-gray-400 hover:text-blue-600 transition-colors"
+                              title="Editar"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                              </svg>
+                            </button>
+                            <button
+                              onClick={() => setDeleteConfirmId(book.id)}
+                              className="p-1 text-gray-400 hover:text-red-600 transition-colors"
+                              title="Excluir"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                          {expandedBooks.has(book.id) && (
+                            <div className="px-3 pb-3 pt-1 border-t border-gray-100 dark:border-gray-700">
+                              <p className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
+                                {book.summary}
+                              </p>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <p className="text-xs text-blue-700 dark:text-blue-400">
+                  <strong>Como funciona:</strong> O mentor IA usará estas orientações e conhecimentos dos livros para te dar conselhos
+                  personalizados, sugerir melhores horários para suas atividades, te incentivar a manter hábitos
+                  e ajudar você a atingir seus objetivos de forma mais eficiente.
                 </p>
               </div>
             </div>

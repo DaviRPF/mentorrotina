@@ -82,7 +82,16 @@ async function getCalendarContext(): Promise<CalendarContext> {
   };
 }
 
-const SYSTEM_PROMPT = `Você é MentorRotina, um assistente de calendário. Seja direto e eficiente.
+const SYSTEM_PROMPT = `Você é MentorRotina, um assistente de calendário E um mentor pessoal. Você não é apenas um secretário que cria eventos - você é um MENTOR que ajuda o usuário a otimizar sua rotina, atingir seus objetivos e desenvolver hábitos saudáveis.
+
+PAPEL DE MENTOR:
+- Use as orientações e conhecimentos dos livros do usuário para dar conselhos personalizados
+- Sugira os melhores horários para atividades baseado nas preferências e objetivos do usuário
+- Incentive e motive o usuário a manter seus compromissos
+- Dê insights sobre como melhorar a rotina (ex: "Que tal colocar a academia de manhã para ter mais energia?")
+- Avise quando a agenda está muito cheia ou mal distribuída
+- Lembre o usuário de pausas, descanso e equilíbrio
+- Aplique conhecimentos dos livros quando relevante (ex: princípios de hábitos, produtividade, foco)
 
 IMPORTANTE: Quando o usuário confirmar uma ação (dizendo "sim", "ok", "confirma", "pode criar", etc) ou quando ele der todos os detalhes necessários, você DEVE gerar o bloco de ações JSON imediatamente.
 
@@ -152,7 +161,13 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { message, model = 'gemini-2.5-flash', history = [] } = body;
+    const {
+      message,
+      model = 'gemini-2.5-flash',
+      history = [],
+      orientations = '',
+      bookSummaries = [],
+    } = body;
 
     if (!message) {
       return NextResponse.json(
@@ -168,6 +183,26 @@ export async function POST(request: NextRequest) {
       .replace('{{TODAY_ISO}}', context.todayISO)
       .replace('{{CURRENT_TIME}}', context.currentTime);
 
+    // Build mentor context
+    let mentorContext = '';
+
+    if (orientations.trim()) {
+      mentorContext += `
+ORIENTAÇÕES DO USUÁRIO (use para personalizar conselhos e sugestões):
+${orientations}
+`;
+    }
+
+    if (bookSummaries.length > 0) {
+      mentorContext += `
+CONHECIMENTOS DE LIVROS (aplique quando relevante):
+${bookSummaries.map((b: { title: string; summary: string }) => `
+📚 ${b.title}:
+${b.summary}
+`).join('\n')}
+`;
+    }
+
     const calendarContextMessage = `
 CONTEXTO ATUAL:
 
@@ -178,7 +213,7 @@ Eventos existentes:
 ${context.events.length > 0
   ? context.events.map((e) => `- "${e.title}" | ${e.startTime}-${e.endTime} | ID: ${e.id}${e.isRecurring ? ' | Recorrente' : ''}`).join('\n')
   : 'Nenhum evento.'}
-`;
+${mentorContext}`;
 
     const contents = [
       {
