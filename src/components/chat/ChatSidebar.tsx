@@ -476,7 +476,9 @@ export function ChatSidebar() {
 
         case 'update':
         case 'move': {
-          if (!action.data.eventId) break;
+          // Fallback: AI pode mandar eventId em action.id ou action.data.eventId
+          const eventId = action.data.eventId || (action as { id?: string }).id;
+          if (!eventId) break;
 
           const updateData: Record<string, unknown> = {};
           if (action.data.title) updateData.title = action.data.title;
@@ -490,7 +492,7 @@ export function ChatSidebar() {
             updateData.recurrenceRule = action.data.recurrenceRule || null;
           }
 
-          const response = await fetch(`/api/events/${action.data.eventId}`, {
+          const response = await fetch(`/api/events/${eventId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(updateData),
@@ -498,7 +500,7 @@ export function ChatSidebar() {
 
           if (response.ok) {
             const updated = await response.json();
-            updateEvent(action.data.eventId, {
+            updateEvent(eventId, {
               ...updated,
               startTime: new Date(updated.startTime),
               endTime: new Date(updated.endTime),
@@ -509,14 +511,16 @@ export function ChatSidebar() {
         }
 
         case 'delete': {
-          if (!action.data.eventId) break;
+          // Fallback: AI pode mandar eventId em action.id ou action.data.eventId
+          const deleteEventId = action.data.eventId || (action as { id?: string }).id;
+          if (!deleteEventId) break;
 
-          const response = await fetch(`/api/events/${action.data.eventId}`, {
+          const response = await fetch(`/api/events/${deleteEventId}`, {
             method: 'DELETE',
           });
 
           if (response.ok) {
-            removeEvent(action.data.eventId);
+            removeEvent(deleteEventId);
           }
           break;
         }

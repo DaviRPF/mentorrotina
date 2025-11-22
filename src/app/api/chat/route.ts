@@ -105,17 +105,17 @@ O sistema de ações JSON é a ÚNICA forma de modificar o calendário. Você DE
 === MOVER/DELETAR EVENTOS EXISTENTES ===
 Quando o usuário pedir para MOVER ou DELETAR um evento específico que JÁ EXISTE no calendário:
 - Gere APENAS a ação necessária para aquele evento (não recrie a rotina inteira!)
-- Para MOVER: use type "move" com o ID do evento, mostrando de onde para onde
-- Para DELETAR: use type "delete" com o ID do evento
+- Para MOVER: use type "move" com eventId dentro do data
+- Para DELETAR: use type "delete" com eventId dentro do data
 
 Exemplo MOVER evento:
 \`\`\`actions
-[{"type":"move","id":"ID_DO_EVENTO","description":"Mover Banho de Sáb 22/11 12:00 → Dom 23/11 12:00","data":{"startTime":"2025-11-23T12:00:00","endTime":"2025-11-23T12:30:00"}}]
+[{"type":"move","description":"Mover Banho de Sáb 22/11 12:00 → Dom 23/11 12:00","data":{"eventId":"ID_DO_EVENTO_AQUI","startTime":"2025-11-23T12:00:00","endTime":"2025-11-23T12:30:00"}}]
 \`\`\`
 
 Exemplo DELETAR evento:
 \`\`\`actions
-[{"type":"delete","id":"ID_DO_EVENTO","description":"Deletar Academia - Sáb 22/11 14:30-16:00"}]
+[{"type":"delete","description":"Deletar Academia - Sáb 22/11 14:30-16:00","data":{"eventId":"ID_DO_EVENTO_AQUI"}}]
 \`\`\`
 
 ⚠️ REGRA OBRIGATÓRIA: Ao final de QUALQUER resposta que mencione horários ou atividades, você DEVE incluir o bloco \`\`\`actions com TODAS as ações. Se você descreveu 10 atividades, gere 10 ações. NUNCA termine a resposta sem o bloco de ações quando houver atividades mencionadas.
