@@ -38,24 +38,40 @@ export async function POST(request: NextRequest) {
 
 MENSAGEM: "${message}"
 
+MEMÓRIAS EXISTENTES DO USUÁRIO:
+${memoriesContext}
+
 EXTRAIA qualquer uma dessas informações se estiver presente:
 - Preferências ("quero X", "prefiro Y", "gosto de Z")
 - Quantidades/medidas ("meu X tem Y gramas", "peso Zkg")
 - Hábitos ("acordo às X", "treino Y vezes")
 - Características pessoais
 
-Para CADA informação encontrada, adicione ao array:
-{"type":"create","newContent":"descrição do fato","reason":"motivo"}
+REGRAS IMPORTANTES:
+1. Se a informação nova CONTRADIZ ou ATUALIZA uma memória existente → use "update" com o memoryId
+2. Se a informação nova COMPLEMENTA uma memória existente (mesmo assunto) → use "update" para adicionar
+3. Se é informação completamente NOVA → use "create"
 
-EXEMPLO:
-Mensagem: "meu whey tem 15g por scoop e prefiro tomar espaçado"
-Resposta:
-[
-{"type":"create","newContent":"Whey protein tem 15g de proteína por scoop","reason":"Informação sobre produto"},
-{"type":"create","newContent":"Prefere consumir proteína de forma espaçada","reason":"Preferência pessoal"}
-]
+FORMATOS:
+- Criar novo: {"type":"create","newContent":"fato novo","reason":"motivo"}
+- Atualizar: {"type":"update","memoryId":"ID_DA_MEMORIA","currentContent":"conteúdo atual","newContent":"conteúdo atualizado","reason":"motivo"}
 
-Agora extraia da mensagem acima. Retorne APENAS o JSON array:`;
+EXEMPLO 1 - Criar novo:
+Memórias existentes: (nenhuma)
+Mensagem: "minha cor favorita é laranja"
+Resposta: [{"type":"create","newContent":"Cor favorita: laranja","reason":"Nova preferência"}]
+
+EXEMPLO 2 - Atualizar (contradição):
+Memórias existentes: [abc123] Cor favorita: laranja
+Mensagem: "minha cor favorita é vermelha"
+Resposta: [{"type":"update","memoryId":"abc123","currentContent":"Cor favorita: laranja","newContent":"Cor favorita: vermelha","reason":"Usuário mudou preferência"}]
+
+EXEMPLO 3 - Atualizar (complementar):
+Memórias existentes: [abc123] Cor favorita: laranja
+Mensagem: "também gosto de vermelho"
+Resposta: [{"type":"update","memoryId":"abc123","currentContent":"Cor favorita: laranja","newContent":"Cores favoritas: laranja e vermelho","reason":"Adicionando nova cor"}]
+
+Agora analise a mensagem e retorne APENAS o JSON array:`;
 
     const response = await fetch(
       `${GEMINI_API_URL}/${model}:generateContent?key=${apiKey}`,
