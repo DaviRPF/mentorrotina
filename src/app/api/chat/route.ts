@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
       history = [],
       personalContext = '',
       orientations = '',
-      bookSummaries = [],
+      bookReferences = [],
       timeContexts = [],
     } = body;
 
@@ -217,14 +217,19 @@ ${orientations}
 `;
     }
 
-    if (bookSummaries.length > 0) {
+    if (bookReferences.length > 0) {
       mentorContext += `
-LIVROS DO USUÁRIO (use seu conhecimento COMPLETO sobre estes livros, não apenas os resumos):
-${bookSummaries.map((b: { title: string; summary: string }) => `
-📚 ${b.title}
-Resumo do usuário (o que ele quer que você foque): ${b.summary}
-→ Use TODO seu conhecimento sobre "${b.title}" para dar conselhos mais ricos e completos!
-`).join('\n')}
+LIVROS DE REFERÊNCIA (use TODO o seu conhecimento sobre estes livros para dar conselhos):
+${bookReferences.map((b: { title: string; topics: string }) => {
+  if (b.topics && b.topics.trim()) {
+    return `📚 ${b.title}
+   Tópicos a focar: ${b.topics}`;
+  } else {
+    return `📚 ${b.title} (use seu conhecimento COMPLETO sobre este livro)`;
+  }
+}).join('\n')}
+
+→ Aplique os conceitos, técnicas e ensinamentos destes livros nas suas sugestões de rotina e conselhos!
 `;
     }
 

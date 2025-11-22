@@ -130,7 +130,7 @@ export function ChatSidebar() {
   } = useConversationStore();
 
   const { addEvent, updateEvent, removeEvent, events, calendars, setEvents } = useCalendarStore();
-  const { geminiModel, aiEnabled, personalContext, generalOrientations, bookSummaries, timeContexts } = useSettingsStore();
+  const { geminiModel, aiEnabled, personalContext, generalOrientations, bookReferences, timeContexts } = useSettingsStore();
 
   // Load conversations on mount
   useEffect(() => {
@@ -176,7 +176,7 @@ export function ChatSidebar() {
           personalContext: personalContext || '',
           // Mentor orientations
           orientations: generalOrientations,
-          bookSummaries: bookSummaries.filter(b => b.enabled !== false).map(b => ({ title: b.title, summary: b.summary })),
+          bookReferences: bookReferences.filter(b => b.enabled !== false).map(b => ({ title: b.title, topics: b.topics })),
           // Time contexts (goals)
           timeContexts: Object.entries(timeContexts || {})
             .filter(([_, ctx]) => ctx.content?.trim())

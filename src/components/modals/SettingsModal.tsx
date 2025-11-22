@@ -1,8 +1,8 @@
 'use client';
 
 import { Modal } from '@/components/ui/Modal';
-import { useSettingsStore, GEMINI_MODELS, GeminiModel, BookSummary, TimeContextType, TIME_CONTEXT_LABELS, TIME_CONTEXT_DURATIONS } from '@/store/settings-store';
-import { Bot, Calendar, Bell, Palette, RotateCcw, BookOpen, Plus, ChevronDown, ChevronUp, Trash2, GraduationCap, Target, Clock, Save } from 'lucide-react';
+import { useSettingsStore, GEMINI_MODELS, GeminiModel, BookReference, TimeContextType, TIME_CONTEXT_LABELS, TIME_CONTEXT_DURATIONS } from '@/store/settings-store';
+import { Bot, Calendar, Bell, Palette, RotateCcw, BookOpen, Plus, ChevronDown, ChevronUp, Trash2, GraduationCap, Target, Clock, Save, Sparkles, Loader2 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
@@ -45,11 +45,11 @@ export function SettingsModal() {
     // Mentor/Orientations
     personalContext,
     generalOrientations,
-    bookSummaries,
-    addBookSummary,
-    updateBookSummary,
-    removeBookSummary,
-    toggleBookSummary,
+    bookReferences,
+    addBookReference,
+    updateBookReference,
+    removeBookReference,
+    toggleBookReference,
     // Time Contexts
     timeContexts,
     updateTimeContext,
@@ -76,13 +76,14 @@ export function SettingsModal() {
 
   const [activeTab, setActiveTab] = useState<TabId>('ai');
 
-  // State for adding/editing book summaries
+  // State for adding/editing book references
   const [isAddingBook, setIsAddingBook] = useState(false);
   const [editingBookId, setEditingBookId] = useState<string | null>(null);
   const [newBookTitle, setNewBookTitle] = useState('');
-  const [newBookSummary, setNewBookSummary] = useState('');
+  const [newBookTopics, setNewBookTopics] = useState('');
   const [expandedBooks, setExpandedBooks] = useState<Set<string>>(new Set());
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [isGeneratingTopics, setIsGeneratingTopics] = useState(false);
 
   // State for time contexts
   const [editingContexts, setEditingContexts] = useState<Record<TimeContextType, string>>({
@@ -160,39 +161,64 @@ export function SettingsModal() {
   };
 
   const handleAddBook = () => {
-    if (newBookTitle.trim() && newBookSummary.trim()) {
-      addBookSummary(newBookTitle.trim(), newBookSummary.trim());
+    if (newBookTitle.trim()) {
+      addBookReference(newBookTitle.trim(), newBookTopics.trim());
       setNewBookTitle('');
-      setNewBookSummary('');
+      setNewBookTopics('');
       setIsAddingBook(false);
     }
   };
 
-  const handleEditBook = (book: BookSummary) => {
+  const handleEditBook = (book: BookReference) => {
     setEditingBookId(book.id);
     setNewBookTitle(book.title);
-    setNewBookSummary(book.summary);
+    setNewBookTopics(book.topics);
   };
 
   const handleSaveEdit = () => {
-    if (editingBookId && newBookTitle.trim() && newBookSummary.trim()) {
-      updateBookSummary(editingBookId, newBookTitle.trim(), newBookSummary.trim());
+    if (editingBookId && newBookTitle.trim()) {
+      updateBookReference(editingBookId, newBookTitle.trim(), newBookTopics.trim());
       setEditingBookId(null);
       setNewBookTitle('');
-      setNewBookSummary('');
+      setNewBookTopics('');
     }
   };
 
   const handleCancelEdit = () => {
     setEditingBookId(null);
     setNewBookTitle('');
-    setNewBookSummary('');
+    setNewBookTopics('');
     setIsAddingBook(false);
   };
 
   const handleDeleteBook = (bookId: string) => {
-    removeBookSummary(bookId);
+    removeBookReference(bookId);
     setDeleteConfirmId(null);
+  };
+
+  const handleGenerateTopics = async () => {
+    if (!newBookTitle.trim()) return;
+
+    setIsGeneratingTopics(true);
+    try {
+      const response = await fetch('/api/book-topics', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newBookTitle.trim(), model: geminiModel }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setNewBookTopics(data.topics);
+      } else {
+        const error = await response.json();
+        console.error('Error generating topics:', error);
+      }
+    } catch (error) {
+      console.error('Error generating topics:', error);
+    } finally {
+      setIsGeneratingTopics(false);
+    }
   };
 
   const handleClose = () => {
@@ -358,7 +384,7 @@ export function SettingsModal() {
               <div>
                 <div className="flex items-center justify-between mb-1">
                   <h3 className="text-sm font-medium text-gray-900 dark:text-white">
-                    Resumos de Livros
+                    Livros de Referência
                   </h3>
                   {!isAddingBook && !editingBookId && (
                     <button
@@ -371,8 +397,8 @@ export function SettingsModal() {
                   )}
                 </div>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mb-3">
-                  Adicione resumos de livros sobre produtividade, hábitos ou desenvolvimento pessoal.
-                  O mentor IA usará esses conhecimentos para dar conselhos mais personalizados.
+                  Adicione livros sobre produtividade, hábitos ou desenvolvimento pessoal.
+                  A IA usará TODO o conhecimento que ela tem sobre esses livros para dar conselhos.
                 </p>
 
                 {/* Add/Edit Book Form */}
@@ -383,25 +409,43 @@ export function SettingsModal() {
                         <label className="block text-xs text-gray-700 dark:text-gray-300 mb-1">
                           Título do livro
                         </label>
-                        <input
-                          type="text"
-                          value={newBookTitle}
-                          onChange={(e) => setNewBookTitle(e.target.value)}
-                          placeholder="Ex: Atomic Habits"
-                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={newBookTitle}
+                            onChange={(e) => setNewBookTitle(e.target.value)}
+                            placeholder="Ex: Atomic Habits"
+                            className="flex-1 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <button
+                            onClick={handleGenerateTopics}
+                            disabled={!newBookTitle.trim() || isGeneratingTopics}
+                            className="flex items-center gap-1 px-3 py-2 text-xs bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+                            title="Gerar tópicos com IA"
+                          >
+                            {isGeneratingTopics ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Sparkles className="w-4 h-4" />
+                            )}
+                            Gerar tópicos
+                          </button>
+                        </div>
                       </div>
                       <div>
                         <label className="block text-xs text-gray-700 dark:text-gray-300 mb-1">
-                          Resumo / Principais lições
+                          Tópicos / Capítulos (opcional)
                         </label>
                         <textarea
-                          value={newBookSummary}
-                          onChange={(e) => setNewBookSummary(e.target.value)}
-                          placeholder="Ex: O livro ensina que pequenos hábitos de 1% ao dia geram grandes resultados. Os 4 passos para criar um hábito são: deixar óbvio, tornar atrativo, facilitar e tornar satisfatório..."
+                          value={newBookTopics}
+                          onChange={(e) => setNewBookTopics(e.target.value)}
+                          placeholder="Deixe vazio para usar todo o conhecimento da IA, ou liste os capítulos/tópicos específicos que você quer que a IA considere..."
                           rows={4}
                           className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                         />
+                        <p className="text-xs text-gray-400 mt-1">
+                          {newBookTopics.length > 0 ? `${newBookTopics.length.toLocaleString()} caracteres` : 'Sem tópicos = usa conhecimento completo'}
+                        </p>
                       </div>
                       <div className="flex justify-end gap-2">
                         <button
@@ -412,7 +456,7 @@ export function SettingsModal() {
                         </button>
                         <button
                           onClick={editingBookId ? handleSaveEdit : handleAddBook}
-                          disabled={!newBookTitle.trim() || !newBookSummary.trim()}
+                          disabled={!newBookTitle.trim()}
                           className="px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                           {editingBookId ? 'Salvar' : 'Adicionar'}
@@ -424,13 +468,13 @@ export function SettingsModal() {
 
                 {/* Book List */}
                 <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {bookSummaries.length === 0 && !isAddingBook && (
+                  {bookReferences.length === 0 && !isAddingBook && (
                     <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-4">
                       Nenhum livro adicionado ainda.
                     </p>
                   )}
 
-                  {bookSummaries.map((book) => (
+                  {bookReferences.map((book) => (
                     <div
                       key={book.id}
                       className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
@@ -461,7 +505,7 @@ export function SettingsModal() {
                           <div className="flex items-center gap-2 p-2">
                             {/* Toggle enabled/disabled */}
                             <button
-                              onClick={() => toggleBookSummary(book.id)}
+                              onClick={() => toggleBookReference(book.id)}
                               className={cn(
                                 'relative w-9 h-5 rounded-full transition-colors flex-shrink-0',
                                 book.enabled !== false
@@ -499,9 +543,9 @@ export function SettingsModal() {
                             )}>
                               {book.title}
                             </span>
-                            {/* Character count */}
+                            {/* Topics indicator */}
                             <span className="text-xs text-gray-400 flex-shrink-0">
-                              {book.summary.length.toLocaleString()} chars
+                              {book.topics ? `${book.topics.length.toLocaleString()} chars` : 'completo'}
                             </span>
                             <button
                               onClick={() => handleEditBook(book)}
@@ -520,10 +564,17 @@ export function SettingsModal() {
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
-                          {expandedBooks.has(book.id) && (
+                          {expandedBooks.has(book.id) && book.topics && (
                             <div className="px-3 pb-3 pt-1 border-t border-gray-100 dark:border-gray-700">
                               <p className="text-xs text-gray-600 dark:text-gray-400 whitespace-pre-wrap">
-                                {book.summary}
+                                {book.topics}
+                              </p>
+                            </div>
+                          )}
+                          {expandedBooks.has(book.id) && !book.topics && (
+                            <div className="px-3 pb-3 pt-1 border-t border-gray-100 dark:border-gray-700">
+                              <p className="text-xs text-gray-500 dark:text-gray-400 italic">
+                                Usando conhecimento completo da IA sobre este livro
                               </p>
                             </div>
                           )}

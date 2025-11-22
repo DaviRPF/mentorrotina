@@ -12,10 +12,10 @@ export const GEMINI_MODELS = [
 
 export type GeminiModel = typeof GEMINI_MODELS[number]['id'];
 
-export interface BookSummary {
+export interface BookReference {
   id: string;
   title: string;
-  summary: string;
+  topics: string; // Chapter/topic list (can be AI-generated or manual)
   enabled: boolean;
 }
 
@@ -52,7 +52,7 @@ export interface Settings {
 
   // AI Mentor Orientations
   generalOrientations: string;
-  bookSummaries: BookSummary[];
+  bookReferences: BookReference[];
 
   // Time Contexts (goals/plans for different periods)
   timeContexts: Record<TimeContextType, TimeContext>;
@@ -88,11 +88,11 @@ interface SettingsStore extends Settings {
   isSettingsOpen: boolean;
   setIsSettingsOpen: (isOpen: boolean) => void;
 
-  // Book summaries actions
-  addBookSummary: (title: string, summary: string) => void;
-  updateBookSummary: (id: string, title: string, summary: string) => void;
-  removeBookSummary: (id: string) => void;
-  toggleBookSummary: (id: string) => void;
+  // Book references actions
+  addBookReference: (title: string, topics: string) => void;
+  updateBookReference: (id: string, title: string, topics: string) => void;
+  removeBookReference: (id: string) => void;
+  toggleBookReference: (id: string) => void;
 
   // Time context actions
   updateTimeContext: (type: TimeContextType, content: string) => void;
@@ -117,7 +117,7 @@ const defaultSettings: Settings = {
 
   // AI Mentor Orientations
   generalOrientations: '',
-  bookSummaries: [],
+  bookReferences: [],
   timeContexts: defaultTimeContexts,
 
   // Calendar
@@ -156,25 +156,25 @@ export const useSettingsStore = create<SettingsStore>()(
 
       setIsSettingsOpen: (isOpen) => set({ isSettingsOpen: isOpen }),
 
-      addBookSummary: (title, summary) => set((state) => ({
-        bookSummaries: [
-          ...state.bookSummaries,
-          { id: crypto.randomUUID(), title, summary, enabled: true }
+      addBookReference: (title, topics) => set((state) => ({
+        bookReferences: [
+          ...state.bookReferences,
+          { id: crypto.randomUUID(), title, topics, enabled: true }
         ]
       })),
 
-      updateBookSummary: (id, title, summary) => set((state) => ({
-        bookSummaries: state.bookSummaries.map((book) =>
-          book.id === id ? { ...book, title, summary } : book
+      updateBookReference: (id, title, topics) => set((state) => ({
+        bookReferences: state.bookReferences.map((book) =>
+          book.id === id ? { ...book, title, topics } : book
         )
       })),
 
-      removeBookSummary: (id) => set((state) => ({
-        bookSummaries: state.bookSummaries.filter((book) => book.id !== id)
+      removeBookReference: (id) => set((state) => ({
+        bookReferences: state.bookReferences.filter((book) => book.id !== id)
       })),
 
-      toggleBookSummary: (id) => set((state) => ({
-        bookSummaries: state.bookSummaries.map((book) =>
+      toggleBookReference: (id) => set((state) => ({
+        bookReferences: state.bookReferences.map((book) =>
           book.id === id ? { ...book, enabled: !book.enabled } : book
         )
       })),
