@@ -42,15 +42,24 @@ ${memoriesContext}
 MENSAGEM DO USUÁRIO:
 "${message}"
 
+EXEMPLOS DO QUE DEVE SER SALVO:
+- "meu whey tem 15g de proteína por scoop" → criar: "Whey protein tem 15g de proteína por scoop"
+- "prefiro consumir proteína espaçada ao longo do dia" → criar: "Prefere consumir proteína espaçada ao longo do dia"
+- "acordo às 7h" → criar: "Costuma acordar às 7h"
+- "tenho TDAH" → criar: "Tem TDAH"
+- "trabalho com marketing" → criar: "Trabalha com marketing"
+- "minha meta é 166g de proteína" → criar: "Meta diária de proteína: 166g"
+
 REGRAS:
-1. Memórias são FATOS sobre o usuário (nome, profissão, preferências, características, hábitos, condições, etc.)
-2. NÃO são memórias: pedidos, perguntas, eventos do calendário, metas temporárias
+1. Memórias são FATOS sobre o usuário: preferências, características, hábitos, condições de saúde, detalhes de produtos que usa, estratégias que prefere, horários habituais, etc.
+2. NÃO são memórias: pedidos diretos ("cria um evento"), perguntas, eventos únicos do calendário
 3. Cada memória deve ser uma informação ATÔMICA (um fato por memória)
 4. Se a mensagem contém info que ATUALIZA uma memória existente → type: "update"
 5. Se a mensagem CONTRADIZ uma memória existente → type: "update"
 6. Se é info NOVA sobre o usuário → type: "create"
 7. Se uma memória ficou obsoleta/incorreta → type: "delete"
 8. Uma mensagem pode gerar 0, 1 ou VÁRIAS ações
+9. IMPORTANTE: Seja proativo! Se o usuário mencionar qualquer detalhe útil sobre sua vida, preferências ou rotina, salve como memória
 
 FORMATO DE RESPOSTA (JSON array):
 \`\`\`json

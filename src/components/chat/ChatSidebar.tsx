@@ -353,6 +353,7 @@ export function ChatSidebar() {
         if (memoryResponse.ok) {
           const memoryData = await memoryResponse.json();
           if (memoryData.actions && memoryData.actions.length > 0) {
+            clearPendingMemoryActions();
             addPendingMemoryActions(memoryData.actions);
           }
         }
