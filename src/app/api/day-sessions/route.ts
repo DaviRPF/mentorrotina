@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import prisma from '@/lib/prisma';
+import { PrismaClient } from '@prisma/client';
 import { startOfDay, endOfDay } from 'date-fns';
+
+const prisma = new PrismaClient();
 
 // GET - Lista todas as sessões ou busca por data
 export async function GET(request: NextRequest) {
