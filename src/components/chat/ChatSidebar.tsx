@@ -1,17 +1,83 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { X, Send, Bot, Trash2, Check, XIcon, Loader2, Sparkles } from 'lucide-react';
-import { useChatStore, PendingAction } from '@/store/chat-store';
+import { X, Send, Bot, Trash2, Check, XIcon, Loader2, Sparkles, ChevronDown, ChevronUp, Calendar, Clock, Repeat, Bell, Palette } from 'lucide-react';
+import { useChatStore, PendingAction, RecurrenceRule } from '@/store/chat-store';
 import { useCalendarStore } from '@/store/calendar-store';
 import { useSettingsStore } from '@/store/settings-store';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+// Color names for display
+const COLOR_NAMES: Record<string, string> = {
+  '#3b82f6': 'Azul',
+  '#ef4444': 'Vermelho',
+  '#22c55e': 'Verde',
+  '#eab308': 'Amarelo',
+  '#a855f7': 'Roxo',
+  '#ec4899': 'Rosa',
+  '#f97316': 'Laranja',
+  '#14b8a6': 'Teal',
+};
+
+// Helper to format recurrence rule
+function formatRecurrence(rule: RecurrenceRule | null | undefined): string | null {
+  if (!rule) return null;
+
+  const daysMap: Record<number, string> = {
+    0: 'Dom', 1: 'Seg', 2: 'Ter', 3: 'Qua', 4: 'Qui', 5: 'Sex', 6: 'Sáb'
+  };
+
+  switch (rule.type) {
+    case 'daily':
+      if (rule.interval === 1) return 'Diariamente';
+      if (rule.interval === 2) return 'Dia sim, dia não';
+      return `A cada ${rule.interval} dias`;
+    case 'weekly':
+      if (rule.daysOfWeek && rule.daysOfWeek.length > 0) {
+        const days = rule.daysOfWeek.map(d => daysMap[d]).join(', ');
+        return `Semanal (${days})`;
+      }
+      if (rule.interval === 1) return 'Semanalmente';
+      return `A cada ${rule.interval} semanas`;
+    case 'monthly':
+      if (rule.interval === 1) return 'Mensalmente';
+      return `A cada ${rule.interval} meses`;
+    case 'yearly':
+      return 'Anualmente';
+    default:
+      return 'Recorrente';
+  }
+}
+
+// Helper to format reminder
+function formatReminder(minutes: number | null | undefined): string | null {
+  if (minutes === null || minutes === undefined) return null;
+  if (minutes < 60) return `${minutes} min antes`;
+  if (minutes === 60) return '1 hora antes';
+  if (minutes < 1440) return `${Math.floor(minutes / 60)} horas antes`;
+  if (minutes === 1440) return '1 dia antes';
+  return `${Math.floor(minutes / 1440)} dias antes`;
+}
 
 export function ChatSidebar() {
   const [input, setInput] = useState('');
+  const [expandedActions, setExpandedActions] = useState<Set<string>>(new Set());
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  const toggleActionExpanded = (actionId: string) => {
+    setExpandedActions(prev => {
+      const next = new Set(prev);
+      if (next.has(actionId)) {
+        next.delete(actionId);
+      } else {
+        next.add(actionId);
+      }
+      return next;
+    });
+  };
 
   const {
     messages,
@@ -115,8 +181,10 @@ export function ChatSidebar() {
               startTime: action.data.startTime,
               endTime: action.data.endTime,
               calendarId: action.data.calendarId || defaultCalendar?.id,
-              color: action.data.color || defaultCalendar?.color,
-              recurrenceRule: action.data.recurrenceRule,
+              color: action.data.color || defaultCalendar?.color || '#3b82f6',
+              isAllDay: action.data.isAllDay || false,
+              reminderMinutes: action.data.reminderMinutes ?? 15,
+              recurrenceRule: action.data.recurrenceRule || null,
             }),
           });
 
@@ -128,6 +196,9 @@ export function ChatSidebar() {
               endTime: new Date(created.endTime),
               recurrenceRule: created.recurrenceRule ? JSON.parse(created.recurrenceRule) : null,
             });
+          } else {
+            const errorData = await response.json();
+            console.error('Error creating event:', errorData);
           }
           break;
         }
@@ -136,15 +207,22 @@ export function ChatSidebar() {
         case 'move': {
           if (!action.data.eventId) break;
 
+          const updateData: Record<string, unknown> = {};
+          if (action.data.title) updateData.title = action.data.title;
+          if (action.data.description !== undefined) updateData.description = action.data.description;
+          if (action.data.startTime) updateData.startTime = action.data.startTime;
+          if (action.data.endTime) updateData.endTime = action.data.endTime;
+          if (action.data.color) updateData.color = action.data.color;
+          if (action.data.isAllDay !== undefined) updateData.isAllDay = action.data.isAllDay;
+          if (action.data.reminderMinutes !== undefined) updateData.reminderMinutes = action.data.reminderMinutes;
+          if (action.data.recurrenceRule !== undefined) {
+            updateData.recurrenceRule = action.data.recurrenceRule || null;
+          }
+
           const response = await fetch(`/api/events/${action.data.eventId}`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              title: action.data.title,
-              description: action.data.description,
-              startTime: action.data.startTime,
-              endTime: action.data.endTime,
-            }),
+            body: JSON.stringify(updateData),
           });
 
           if (response.ok) {
@@ -153,6 +231,7 @@ export function ChatSidebar() {
               ...updated,
               startTime: new Date(updated.startTime),
               endTime: new Date(updated.endTime),
+              recurrenceRule: updated.recurrenceRule ? JSON.parse(updated.recurrenceRule) : null,
             });
           }
           break;
@@ -342,45 +421,174 @@ export function ChatSidebar() {
             </div>
           </div>
 
-          <div className="space-y-2 max-h-40 overflow-y-auto">
-            {pending.map((action) => (
-              <div
-                key={action.id}
-                className="flex items-center justify-between gap-2 p-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
-              >
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                    {action.type === 'create' && '➕ Criar: '}
-                    {action.type === 'update' && '✏️ Editar: '}
-                    {action.type === 'move' && '📍 Mover: '}
-                    {action.type === 'delete' && '🗑️ Excluir: '}
-                    {action.description}
-                  </p>
-                  {action.data.startTime && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {format(new Date(action.data.startTime), 'dd/MM HH:mm')}
-                      {action.data.endTime && ` - ${format(new Date(action.data.endTime), 'HH:mm')}`}
-                    </p>
+          <div className="space-y-2 max-h-64 overflow-y-auto">
+            {pending.map((action) => {
+              const isExpanded = expandedActions.has(action.id);
+              const colorName = action.data.color ? COLOR_NAMES[action.data.color.toLowerCase()] || action.data.color : null;
+              const recurrence = formatRecurrence(action.data.recurrenceRule);
+              const reminder = formatReminder(action.data.reminderMinutes);
+              const calendarName = action.data.calendarId
+                ? calendars.find(c => c.id === action.data.calendarId)?.name
+                : calendars[0]?.name;
+
+              return (
+                <div
+                  key={action.id}
+                  className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+                >
+                  {/* Header row */}
+                  <div className="flex items-center gap-2 p-2">
+                    <button
+                      onClick={() => toggleActionExpanded(action.id)}
+                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
+                    >
+                      {isExpanded ? (
+                        <ChevronUp className="w-4 h-4 text-gray-500" />
+                      ) : (
+                        <ChevronDown className="w-4 h-4 text-gray-500" />
+                      )}
+                    </button>
+
+                    {/* Color indicator */}
+                    {action.data.color && (
+                      <div
+                        className="w-3 h-3 rounded-full flex-shrink-0"
+                        style={{ backgroundColor: action.data.color }}
+                      />
+                    )}
+
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                        {action.type === 'create' && '➕ '}
+                        {action.type === 'update' && '✏️ '}
+                        {action.type === 'move' && '📍 '}
+                        {action.type === 'delete' && '🗑️ '}
+                        {action.data.title || action.description}
+                      </p>
+                      {action.data.startTime && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {format(new Date(action.data.startTime), "EEE, d/MM 'às' HH:mm", { locale: ptBR })}
+                          {action.data.endTime && ` - ${format(new Date(action.data.endTime), 'HH:mm')}`}
+                        </p>
+                      )}
+                    </div>
+
+                    <div className="flex gap-1">
+                      <button
+                        onClick={() => handleAcceptAction(action)}
+                        className="p-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors"
+                        title="Aceitar"
+                      >
+                        <Check className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleRejectAction(action)}
+                        className="p-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"
+                        title="Rejeitar"
+                      >
+                        <XIcon className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Expanded details */}
+                  {isExpanded && (
+                    <div className="px-3 pb-3 pt-1 border-t border-gray-100 dark:border-gray-700 space-y-2 text-xs">
+                      {/* Title & Description */}
+                      {action.data.title && (
+                        <div className="flex items-start gap-2">
+                          <Calendar className="w-3.5 h-3.5 text-gray-400 mt-0.5" />
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Título: </span>
+                            <span className="text-gray-900 dark:text-white">{action.data.title}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {action.data.description && (
+                        <div className="flex items-start gap-2">
+                          <span className="text-gray-400 text-sm ml-0.5">📝</span>
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Descrição: </span>
+                            <span className="text-gray-900 dark:text-white">{action.data.description}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Date/Time */}
+                      {action.data.startTime && (
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-3.5 h-3.5 text-gray-400" />
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Horário: </span>
+                            <span className="text-gray-900 dark:text-white">
+                              {format(new Date(action.data.startTime), "EEEE, d 'de' MMMM 'às' HH:mm", { locale: ptBR })}
+                              {action.data.endTime && ` até ${format(new Date(action.data.endTime), 'HH:mm')}`}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Color */}
+                      {colorName && (
+                        <div className="flex items-center gap-2">
+                          <Palette className="w-3.5 h-3.5 text-gray-400" />
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-gray-500 dark:text-gray-400">Cor: </span>
+                            <div
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: action.data.color }}
+                            />
+                            <span className="text-gray-900 dark:text-white">{colorName}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Calendar */}
+                      {calendarName && (
+                        <div className="flex items-center gap-2">
+                          <Calendar className="w-3.5 h-3.5 text-gray-400" />
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Calendário: </span>
+                            <span className="text-gray-900 dark:text-white">{calendarName}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Recurrence */}
+                      {recurrence && (
+                        <div className="flex items-center gap-2">
+                          <Repeat className="w-3.5 h-3.5 text-gray-400" />
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Repetição: </span>
+                            <span className="text-gray-900 dark:text-white">{recurrence}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Reminder */}
+                      {reminder && (
+                        <div className="flex items-center gap-2">
+                          <Bell className="w-3.5 h-3.5 text-gray-400" />
+                          <div>
+                            <span className="text-gray-500 dark:text-gray-400">Lembrete: </span>
+                            <span className="text-gray-900 dark:text-white">{reminder}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* All day */}
+                      {action.data.isAllDay && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-gray-400 text-sm ml-0.5">☀️</span>
+                          <span className="text-gray-900 dark:text-white">Evento de dia inteiro</span>
+                        </div>
+                      )}
+                    </div>
                   )}
                 </div>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => handleAcceptAction(action)}
-                    className="p-1.5 bg-green-100 hover:bg-green-200 text-green-700 rounded-lg transition-colors"
-                    title="Aceitar"
-                  >
-                    <Check className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => handleRejectAction(action)}
-                    className="p-1.5 bg-red-100 hover:bg-red-200 text-red-700 rounded-lg transition-colors"
-                    title="Rejeitar"
-                  >
-                    <XIcon className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

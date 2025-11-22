@@ -10,6 +10,14 @@ export interface ChatMessage {
   actions?: PendingAction[];
 }
 
+export interface RecurrenceRule {
+  type: 'daily' | 'weekly' | 'monthly' | 'yearly';
+  interval: number;
+  daysOfWeek?: number[];
+  endDate?: string;
+  count?: number;
+}
+
 export interface PendingAction {
   id: string;
   type: 'create' | 'update' | 'delete' | 'move';
@@ -22,7 +30,9 @@ export interface PendingAction {
     color?: string;
     calendarId?: string;
     eventId?: string;
-    recurrenceRule?: object | null;
+    isAllDay?: boolean;
+    reminderMinutes?: number | null;
+    recurrenceRule?: RecurrenceRule | null;
   };
   status: 'pending' | 'accepted' | 'rejected';
 }
