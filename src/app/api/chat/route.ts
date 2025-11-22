@@ -269,7 +269,8 @@ ${mentorContext}`;
         role: 'model',
         parts: [{ text: 'Entendido! Pronto para ajudar com seu calendário. O que você precisa?' }],
       },
-      ...history.map((msg: { role: string; content: string }) => ({
+      // Limit history to last 10 messages to prevent context overflow
+      ...history.slice(-10).map((msg: { role: string; content: string }) => ({
         role: msg.role === 'assistant' ? 'model' : 'user',
         parts: [{ text: msg.content }],
       })),
@@ -290,7 +291,7 @@ ${mentorContext}`;
             temperature: 0.3,
             topK: 40,
             topP: 0.95,
-            maxOutputTokens: 2048,
+            maxOutputTokens: 8192,
           },
           safetySettings: [
             { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
