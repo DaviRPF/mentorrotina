@@ -1,0 +1,53 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Calendar {
+  id        String   @id @default(uuid())
+  name      String
+  color     String   @default("#3b82f6")
+  isVisible Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  events    Event[]
+}
+
+model Event {
+  id          String    @id @default(uuid())
+  title       String
+  description String?
+  startTime   DateTime
+  endTime     DateTime
+  color       String    @default("#3b82f6")
+  isAllDay    Boolean   @default(false)
+
+  // Calendar reference
+  calendarId  String
+  calendar    Calendar  @relation(fields: [calendarId], references: [id], onDelete: Cascade)
+
+  // Recurrence
+  recurrenceRule String?   // RRULE format or JSON string
+  recurrenceEndDate DateTime?
+
+  // For recurring event instances
+  parentEventId String?
+  parentEvent   Event?    @relation("RecurringEvents", fields: [parentEventId], references: [id], onDelete: Cascade)
+  instances     Event[]   @relation("RecurringEvents")
+
+  // Exception dates (dates to skip in recurrence)
+  exceptionDates String?  // JSON array of dates
+
+  // Reminder
+  reminderMinutes Int?    // Minutes before event to remind
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
