@@ -176,7 +176,7 @@ export function ChatSidebar() {
           personalContext: personalContext || '',
           // Mentor orientations
           orientations: generalOrientations,
-          bookSummaries: bookSummaries.map(b => ({ title: b.title, summary: b.summary })),
+          bookSummaries: bookSummaries.filter(b => b.enabled !== false).map(b => ({ title: b.title, summary: b.summary })),
           // Time contexts (goals)
           timeContexts: Object.entries(timeContexts || {})
             .filter(([_, ctx]) => ctx.content?.trim())

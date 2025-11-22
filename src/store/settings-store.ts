@@ -16,6 +16,7 @@ export interface BookSummary {
   id: string;
   title: string;
   summary: string;
+  enabled: boolean;
 }
 
 export interface TimeContext {
@@ -91,6 +92,7 @@ interface SettingsStore extends Settings {
   addBookSummary: (title: string, summary: string) => void;
   updateBookSummary: (id: string, title: string, summary: string) => void;
   removeBookSummary: (id: string) => void;
+  toggleBookSummary: (id: string) => void;
 
   // Time context actions
   updateTimeContext: (type: TimeContextType, content: string) => void;
@@ -157,7 +159,7 @@ export const useSettingsStore = create<SettingsStore>()(
       addBookSummary: (title, summary) => set((state) => ({
         bookSummaries: [
           ...state.bookSummaries,
-          { id: crypto.randomUUID(), title, summary }
+          { id: crypto.randomUUID(), title, summary, enabled: true }
         ]
       })),
 
@@ -169,6 +171,12 @@ export const useSettingsStore = create<SettingsStore>()(
 
       removeBookSummary: (id) => set((state) => ({
         bookSummaries: state.bookSummaries.filter((book) => book.id !== id)
+      })),
+
+      toggleBookSummary: (id) => set((state) => ({
+        bookSummaries: state.bookSummaries.map((book) =>
+          book.id === id ? { ...book, enabled: !book.enabled } : book
+        )
       })),
 
       updateTimeContext: (type, content) => set((state) => ({

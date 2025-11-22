@@ -49,6 +49,7 @@ export function SettingsModal() {
     addBookSummary,
     updateBookSummary,
     removeBookSummary,
+    toggleBookSummary,
     // Time Contexts
     timeContexts,
     updateTimeContext,
@@ -458,6 +459,24 @@ export function SettingsModal() {
                       ) : (
                         <>
                           <div className="flex items-center gap-2 p-2">
+                            {/* Toggle enabled/disabled */}
+                            <button
+                              onClick={() => toggleBookSummary(book.id)}
+                              className={cn(
+                                'relative w-9 h-5 rounded-full transition-colors flex-shrink-0',
+                                book.enabled !== false
+                                  ? 'bg-blue-600'
+                                  : 'bg-gray-300 dark:bg-gray-600'
+                              )}
+                              title={book.enabled !== false ? 'Desativar' : 'Ativar'}
+                            >
+                              <span
+                                className={cn(
+                                  'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform',
+                                  book.enabled !== false ? 'translate-x-4' : 'translate-x-0.5'
+                                )}
+                              />
+                            </button>
                             <button
                               onClick={() => toggleBookExpanded(book.id)}
                               className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
@@ -468,9 +487,21 @@ export function SettingsModal() {
                                 <ChevronDown className="w-4 h-4 text-gray-500" />
                               )}
                             </button>
-                            <BookOpen className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                            <span className="flex-1 text-sm font-medium text-gray-900 dark:text-white truncate">
+                            <BookOpen className={cn(
+                              'w-4 h-4 flex-shrink-0',
+                              book.enabled !== false ? 'text-blue-500' : 'text-gray-400'
+                            )} />
+                            <span className={cn(
+                              'flex-1 text-sm font-medium truncate',
+                              book.enabled !== false
+                                ? 'text-gray-900 dark:text-white'
+                                : 'text-gray-400 dark:text-gray-500'
+                            )}>
                               {book.title}
+                            </span>
+                            {/* Character count */}
+                            <span className="text-xs text-gray-400 flex-shrink-0">
+                              {book.summary.length.toLocaleString()} chars
                             </span>
                             <button
                               onClick={() => handleEditBook(book)}
