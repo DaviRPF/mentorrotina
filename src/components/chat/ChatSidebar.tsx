@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { X, Send, Bot, Trash2, Check, XIcon, Loader2, Sparkles, ChevronDown, ChevronUp, Calendar, Clock, Repeat, Bell, Palette, Plus, MessageSquare, ChevronLeft, Edit2, Save } from 'lucide-react';
-import { useChatStore, PendingAction, RecurrenceRule } from '@/store/chat-store';
+import { X, Send, Bot, Trash2, Check, XIcon, Loader2, Sparkles, ChevronDown, ChevronUp, Calendar, Clock, Repeat, Bell, Palette, Plus, MessageSquare, ChevronLeft, Edit2, Save, Brain } from 'lucide-react';
+import { useChatStore, PendingAction, PendingMemoryAction, RecurrenceRule } from '@/store/chat-store';
 import { useConversationStore } from '@/store/conversation-store';
 import { useCalendarStore } from '@/store/calendar-store';
 import { useSettingsStore } from '@/store/settings-store';
@@ -112,6 +112,12 @@ export function ChatSidebar() {
     rejectAllActions,
     getPendingActions,
     updateActionData,
+    pendingMemoryActions,
+    addPendingMemoryActions,
+    acceptMemoryAction,
+    rejectMemoryAction,
+    clearPendingMemoryActions,
+    getPendingMemoryActions,
   } = useChatStore();
 
   // Conversation store for database persistence
@@ -130,7 +136,7 @@ export function ChatSidebar() {
   } = useConversationStore();
 
   const { addEvent, updateEvent, removeEvent, events, calendars, setEvents } = useCalendarStore();
-  const { geminiModel, aiEnabled, memories, generalOrientations, bookReferences, timeContexts } = useSettingsStore();
+  const { geminiModel, aiEnabled, memories, addMemory, updateMemory, removeMemory, generalOrientations, bookReferences, timeContexts } = useSettingsStore();
 
   // Load conversations on mount
   useEffect(() => {
@@ -197,6 +203,28 @@ export function ChatSidebar() {
       // Add pending actions to local store for UI
       if (data.actions && data.actions.length > 0) {
         addPendingActions(data.actions);
+      }
+
+      // Analyze user message for personal info (memories)
+      try {
+        const memoryResponse = await fetch('/api/memories/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: userMessage,
+            memories: memories.map(m => ({ id: m.id, content: m.content })),
+            model: geminiModel,
+          }),
+        });
+
+        if (memoryResponse.ok) {
+          const memoryData = await memoryResponse.json();
+          if (memoryData.actions && memoryData.actions.length > 0) {
+            addPendingMemoryActions(memoryData.actions);
+          }
+        }
+      } catch (memErr) {
+        console.error('Memory analysis error:', memErr);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
@@ -929,6 +957,95 @@ export function ChatSidebar() {
                 </div>
               );
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* Pending Memory Actions */}
+          {getPendingMemoryActions().length > 0 && (
+            <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-purple-50 dark:bg-purple-900/20">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-medium text-purple-900 dark:text-purple-100 flex items-center gap-2">
+                  <Brain className="w-4 h-4" />
+                  Memórias Detectadas ({getPendingMemoryActions().length})
+                </h3>
+              </div>
+
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {getPendingMemoryActions().map((action) => (
+                  <div
+                    key={action.id}
+                    className="bg-white dark:bg-gray-800 rounded-lg border border-purple-200 dark:border-purple-700 p-3"
+                  >
+                    <div className="flex items-start gap-2 mb-2">
+                      <span className={cn(
+                        'text-xs font-medium px-2 py-0.5 rounded',
+                        action.type === 'create' && 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
+                        action.type === 'update' && 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
+                        action.type === 'delete' && 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                      )}>
+                        {action.type === 'create' && 'Nova'}
+                        {action.type === 'update' && 'Atualizar'}
+                        {action.type === 'delete' && 'Excluir'}
+                      </span>
+                      <span className="text-xs text-gray-500 dark:text-gray-400 flex-1">{action.reason}</span>
+                    </div>
+
+                    {/* Show before/after for updates */}
+                    {action.type === 'update' && action.currentContent && (
+                      <div className="mb-2 text-xs">
+                        <div className="text-gray-500 dark:text-gray-400 mb-1">Antes:</div>
+                        <div className="bg-red-50 dark:bg-red-900/20 p-2 rounded text-red-700 dark:text-red-300 line-through">
+                          {action.currentContent}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Show new content */}
+                    {(action.type === 'create' || action.type === 'update') && action.newContent && (
+                      <div className="mb-2 text-xs">
+                        {action.type === 'update' && <div className="text-gray-500 dark:text-gray-400 mb-1">Depois:</div>}
+                        <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded text-green-700 dark:text-green-300">
+                          {action.newContent}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Show content to delete */}
+                    {action.type === 'delete' && action.currentContent && (
+                      <div className="mb-2 text-xs">
+                        <div className="bg-red-50 dark:bg-red-900/20 p-2 rounded text-red-700 dark:text-red-300">
+                          {action.currentContent}
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex justify-end gap-2">
+                      <button
+                        onClick={() => rejectMemoryAction(action.id)}
+                        className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                      >
+                        Rejeitar
+                      </button>
+                      <button
+                        onClick={() => {
+                          // Apply the memory action
+                          if (action.type === 'create' && action.newContent) {
+                            addMemory(action.newContent);
+                          } else if (action.type === 'update' && action.memoryId && action.newContent) {
+                            updateMemory(action.memoryId, action.newContent);
+                          } else if (action.type === 'delete' && action.memoryId) {
+                            removeMemory(action.memoryId);
+                          }
+                          acceptMemoryAction(action.id);
+                        }}
+                        className="px-2 py-1 text-xs bg-purple-600 text-white hover:bg-purple-700 rounded"
+                      >
+                        Aceitar
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
