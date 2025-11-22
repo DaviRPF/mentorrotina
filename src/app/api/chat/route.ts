@@ -346,8 +346,13 @@ ${mentorContext}`;
       .replace(/```\n\[[\s\S]*?\]\n```/g, '')
       .trim();
 
+    // Provide default response if only actions were returned
+    const finalResponse = cleanResponse || (actions.length > 0
+      ? 'Preparei as ações para você! Revise e aceite quando estiver pronto.'
+      : 'Desculpe, não consegui processar sua solicitação.');
+
     return NextResponse.json({
-      response: cleanResponse,
+      response: finalResponse,
       actions,
     });
   } catch (error) {
