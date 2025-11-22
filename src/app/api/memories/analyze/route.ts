@@ -34,38 +34,28 @@ export async function POST(request: NextRequest) {
       ? memories.map((m: { id: string; content: string }, i: number) => `[${m.id}] ${m.content}`).join('\n')
       : '(nenhuma memória registrada)';
 
-    const prompt = `Analise a mensagem do usuário e identifique informações PESSOAIS sobre ele que devem ser salvas como "memórias".
+    const prompt = `Extraia informações pessoais desta mensagem e retorne como JSON.
 
-MEMÓRIAS EXISTENTES:
-${memoriesContext}
+MENSAGEM: "${message}"
 
-MENSAGEM DO USUÁRIO:
-"${message}"
+EXTRAIA qualquer uma dessas informações se estiver presente:
+- Preferências ("quero X", "prefiro Y", "gosto de Z")
+- Quantidades/medidas ("meu X tem Y gramas", "peso Zkg")
+- Hábitos ("acordo às X", "treino Y vezes")
+- Características pessoais
 
-REGRAS:
-1. Memórias são FATOS sobre o usuário (nome, profissão, preferências, características, hábitos, condições, produtos que usa, quantidades, etc.)
-2. NÃO são memórias: comandos diretos ("cria um evento"), perguntas sem informação pessoal
-3. SÃO memórias: "meu whey tem 15g" (dado do produto), "prefiro proteína espaçada" (preferência), "acordo às 7h" (hábito)
-4. Cada memória deve ser uma informação ATÔMICA (um fato por memória)
-5. Se a mensagem contém info que ATUALIZA uma memória existente → type: "update"
-6. Se a mensagem CONTRADIZ uma memória existente → type: "update"
-7. Se é info NOVA sobre o usuário → type: "create"
-8. Uma mensagem pode gerar 0, 1 ou VÁRIAS ações
+Para CADA informação encontrada, adicione ao array:
+{"type":"create","newContent":"descrição do fato","reason":"motivo"}
 
-FORMATO DE RESPOSTA (JSON array):
-\`\`\`json
+EXEMPLO:
+Mensagem: "meu whey tem 15g por scoop e prefiro tomar espaçado"
+Resposta:
 [
-  {
-    "type": "create",
-    "newContent": "Texto da nova memória",
-    "reason": "Por que criar"
-  }
+{"type":"create","newContent":"Whey protein tem 15g de proteína por scoop","reason":"Informação sobre produto"},
+{"type":"create","newContent":"Prefere consumir proteína de forma espaçada","reason":"Preferência pessoal"}
 ]
-\`\`\`
 
-Se não houver informações pessoais para salvar, retorne array vazio: []
-
-Responda APENAS com o JSON, sem explicações.`;
+Agora extraia da mensagem acima. Retorne APENAS o JSON array:`;
 
     const response = await fetch(
       `${GEMINI_API_URL}/${model}:generateContent?key=${apiKey}`,
