@@ -378,11 +378,17 @@ ${mentorContext}`;
       }
     }
 
-    // Clean response - remove all code blocks
-    const cleanResponse = responseText
-      .replace(/```actions\n[\s\S]*?\n```/g, '')
-      .replace(/```json\n[\s\S]*?\n```/g, '')
-      .replace(/```\n\[[\s\S]*?\]\n```/g, '')
+    // Clean response - remove all code blocks (complete and incomplete)
+    let cleanResponse = responseText
+      .replace(/```actions\n[\s\S]*?```/g, '')
+      .replace(/```json\n[\s\S]*?```/g, '')
+      .replace(/```\n\[[\s\S]*?```/g, '')
+      // Also remove incomplete code blocks at the end (no closing ```)
+      .replace(/```actions\n[\s\S]*$/g, '')
+      .replace(/```json\n[\s\S]*$/g, '')
+      .replace(/```\n\[[\s\S]*$/g, '')
+      // Remove any standalone JSON arrays that look like actions
+      .replace(/\[\s*\{\s*"type"\s*:\s*"create"[\s\S]*$/g, '')
       .trim();
 
     // Provide default response if only actions were returned

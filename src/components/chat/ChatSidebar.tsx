@@ -90,6 +90,10 @@ export function ChatSidebar() {
   const [isResizing, setIsResizing] = useState(false);
   const [actionsHeight, setActionsHeight] = useState(256); // 256px default
   const [isResizingActions, setIsResizingActions] = useState(false);
+  const [memoriesHeight, setMemoriesHeight] = useState(200); // 200px default
+  const [isResizingMemories, setIsResizingMemories] = useState(false);
+  const [editingMemoryActionId, setEditingMemoryActionId] = useState<string | null>(null);
+  const [editingMemoryContent, setEditingMemoryContent] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
@@ -251,6 +255,35 @@ export function ChatSidebar() {
       };
     }
   }, [isResizingActions]);
+
+  // Handle pending memories resize
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizingMemories || !sidebarRef.current) return;
+      const sidebarRect = sidebarRef.current.getBoundingClientRect();
+      const newHeight = sidebarRect.bottom - e.clientY;
+      // Min 100px, max 400px
+      setMemoriesHeight(Math.min(400, Math.max(100, newHeight)));
+    };
+
+    const handleMouseUp = () => {
+      setIsResizingMemories(false);
+    };
+
+    if (isResizingMemories) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+      document.body.style.cursor = 'ns-resize';
+      document.body.style.userSelect = 'none';
+
+      return () => {
+        document.removeEventListener('mousemove', handleMouseMove);
+        document.removeEventListener('mouseup', handleMouseUp);
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+      };
+    }
+  }, [isResizingMemories]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -1090,15 +1123,23 @@ export function ChatSidebar() {
 
           {/* Pending Memory Actions */}
           {getPendingMemoryActions().length > 0 && (
-            <div className="border-t border-gray-200 dark:border-gray-700 p-4 bg-purple-50 dark:bg-purple-900/20">
-              <div className="flex items-center justify-between mb-3">
+            <div
+              className="border-t border-gray-200 dark:border-gray-700 bg-purple-50 dark:bg-purple-900/20 relative flex flex-col"
+              style={{ height: `${memoriesHeight}px`, minHeight: '100px' }}
+            >
+              {/* Resize handle */}
+              <div
+                className="absolute top-0 left-0 right-0 h-1 cursor-ns-resize hover:bg-purple-500 transition-colors z-10"
+                onMouseDown={() => setIsResizingMemories(true)}
+              />
+              <div className="flex items-center justify-between p-4 pb-2">
                 <h3 className="text-sm font-medium text-purple-900 dark:text-purple-100 flex items-center gap-2">
                   <Brain className="w-4 h-4" />
                   Memórias Detectadas ({getPendingMemoryActions().length})
                 </h3>
               </div>
 
-              <div className="space-y-2 max-h-48 overflow-y-auto">
+              <div className="space-y-2 overflow-y-auto flex-1 px-4 pb-4">
                 {getPendingMemoryActions().map((action) => (
                   <div
                     key={action.id}
@@ -1128,13 +1169,30 @@ export function ChatSidebar() {
                       </div>
                     )}
 
-                    {/* Show new content */}
+                    {/* Show new content - editable */}
                     {(action.type === 'create' || action.type === 'update') && action.newContent && (
                       <div className="mb-2 text-xs">
                         {action.type === 'update' && <div className="text-gray-500 dark:text-gray-400 mb-1">Depois:</div>}
-                        <div className="bg-green-50 dark:bg-green-900/20 p-2 rounded text-green-700 dark:text-green-300">
-                          {action.newContent}
-                        </div>
+                        {editingMemoryActionId === action.id ? (
+                          <textarea
+                            value={editingMemoryContent}
+                            onChange={(e) => setEditingMemoryContent(e.target.value)}
+                            className="w-full bg-green-50 dark:bg-green-900/20 p-2 rounded text-green-700 dark:text-green-300 border border-green-300 dark:border-green-700 resize-none"
+                            rows={3}
+                            autoFocus
+                          />
+                        ) : (
+                          <div
+                            className="bg-green-50 dark:bg-green-900/20 p-2 rounded text-green-700 dark:text-green-300 cursor-pointer hover:ring-2 hover:ring-green-400"
+                            onClick={() => {
+                              setEditingMemoryActionId(action.id);
+                              setEditingMemoryContent(action.newContent || '');
+                            }}
+                            title="Clique para editar"
+                          >
+                            {action.newContent}
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -1148,28 +1206,60 @@ export function ChatSidebar() {
                     )}
 
                     <div className="flex justify-end gap-2">
-                      <button
-                        onClick={() => rejectMemoryAction(action.id)}
-                        className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                      >
-                        Rejeitar
-                      </button>
-                      <button
-                        onClick={() => {
-                          // Apply the memory action
-                          if (action.type === 'create' && action.newContent) {
-                            addMemory(action.newContent);
-                          } else if (action.type === 'update' && action.memoryId && action.newContent) {
-                            updateMemory(action.memoryId, action.newContent);
-                          } else if (action.type === 'delete' && action.memoryId) {
-                            removeMemory(action.memoryId);
-                          }
-                          acceptMemoryAction(action.id);
-                        }}
-                        className="px-2 py-1 text-xs bg-purple-600 text-white hover:bg-purple-700 rounded"
-                      >
-                        Aceitar
-                      </button>
+                      {editingMemoryActionId === action.id ? (
+                        <>
+                          <button
+                            onClick={() => {
+                              setEditingMemoryActionId(null);
+                              setEditingMemoryContent('');
+                            }}
+                            className="px-2 py-1 text-xs text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+                          >
+                            Cancelar
+                          </button>
+                          <button
+                            onClick={() => {
+                              // Apply the edited content
+                              if (action.type === 'create') {
+                                addMemory(editingMemoryContent);
+                              } else if (action.type === 'update' && action.memoryId) {
+                                updateMemory(action.memoryId, editingMemoryContent);
+                              }
+                              acceptMemoryAction(action.id);
+                              setEditingMemoryActionId(null);
+                              setEditingMemoryContent('');
+                            }}
+                            className="px-2 py-1 text-xs bg-purple-600 text-white hover:bg-purple-700 rounded"
+                          >
+                            Salvar
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => rejectMemoryAction(action.id)}
+                            className="px-2 py-1 text-xs text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                          >
+                            Rejeitar
+                          </button>
+                          <button
+                            onClick={() => {
+                              // Apply the memory action
+                              if (action.type === 'create' && action.newContent) {
+                                addMemory(action.newContent);
+                              } else if (action.type === 'update' && action.memoryId && action.newContent) {
+                                updateMemory(action.memoryId, action.newContent);
+                              } else if (action.type === 'delete' && action.memoryId) {
+                                removeMemory(action.memoryId);
+                              }
+                              acceptMemoryAction(action.id);
+                            }}
+                            className="px-2 py-1 text-xs bg-purple-600 text-white hover:bg-purple-700 rounded"
+                          >
+                            Aceitar
+                          </button>
+                        </>
+                      )}
                     </div>
                   </div>
                 ))}
