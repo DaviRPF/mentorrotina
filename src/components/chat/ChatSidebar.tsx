@@ -80,6 +80,7 @@ export function ChatSidebar() {
   const [showConversationList, setShowConversationList] = useState(false);
   const [editingActionId, setEditingActionId] = useState<string | null>(null);
   const [editingData, setEditingData] = useState<Partial<PendingAction['data']>>({});
+  const [selectedActionId, setSelectedActionId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
@@ -154,6 +155,35 @@ export function ChatSidebar() {
       inputRef.current?.focus();
     }
   }, [isOpen]);
+
+  // Handle Delete key for selected pending actions
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't handle if user is typing in an input/textarea
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA') {
+        return;
+      }
+
+      if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selectedActionId) {
+          e.preventDefault();
+          rejectAction(selectedActionId);
+          setSelectedActionId(null);
+        }
+      }
+
+      // Escape to deselect
+      if (e.key === 'Escape') {
+        setSelectedActionId(null);
+      }
+    };
+
+    if (isOpen) {
+      window.addEventListener('keydown', handleKeyDown);
+      return () => window.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [isOpen, selectedActionId, rejectAction]);
 
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
@@ -657,20 +687,26 @@ export function ChatSidebar() {
               return (
                 <div
                   key={action.id}
-                  className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden"
+                  onClick={() => setSelectedActionId(selectedActionId === action.id ? null : action.id)}
+                  className={cn(
+                    'bg-white dark:bg-gray-800 rounded-lg border overflow-hidden cursor-pointer transition-all',
+                    selectedActionId === action.id
+                      ? 'border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800'
+                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600'
+                  )}
                 >
-                  {/* Header row */}
-                  <div className="flex items-center gap-2 p-2">
-                    <button
-                      onClick={() => toggleActionExpanded(action.id)}
-                      className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded transition-colors"
-                    >
+                  {/* Header row - entire row is clickable for expand/collapse */}
+                  <div
+                    className="flex items-center gap-2 p-2 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors"
+                    onClick={(e) => { e.stopPropagation(); toggleActionExpanded(action.id); }}
+                  >
+                    <div className="p-1">
                       {isExpanded ? (
                         <ChevronUp className="w-4 h-4 text-gray-500" />
                       ) : (
                         <ChevronDown className="w-4 h-4 text-gray-500" />
                       )}
-                    </button>
+                    </div>
 
                     {/* Color indicator */}
                     {action.data.color && (
@@ -696,7 +732,7 @@ export function ChatSidebar() {
                       )}
                     </div>
 
-                    <div className="flex gap-1">
+                    <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
                       {editingActionId === action.id ? (
                         <>
                           <button
