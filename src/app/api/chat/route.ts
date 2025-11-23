@@ -500,23 +500,44 @@ ${day.events.map(e => `  - ${e.title} (${e.startTime}-${e.endTime})`).join('\n')
 `;
     }
 
-    // Build todos context
+    // Build todos context with dynamic countdown
     let todosContext = '';
     if (context.todos.length > 0) {
-      const priorityLabels: Record<string, string> = {
-        urgent: '🔴 URGENTE',
-        high: '🟠 Alta',
-        medium: '🟡 Média',
-        low: '🟢 Baixa',
+      const now = new Date();
+
+      const getCountdown = (deadlineISO: string | null) => {
+        if (!deadlineISO) return 'Sem prazo definido';
+
+        const deadline = new Date(deadlineISO);
+        const diffMs = deadline.getTime() - now.getTime();
+
+        if (diffMs < 0) {
+          const hoursAgo = Math.abs(Math.floor(diffMs / (1000 * 60 * 60)));
+          if (hoursAgo < 24) return `⚠️ ATRASADO há ${hoursAgo}h`;
+          const daysAgo = Math.floor(hoursAgo / 24);
+          return `⚠️ ATRASADO há ${daysAgo} dia${daysAgo > 1 ? 's' : ''}`;
+        }
+
+        const hoursLeft = Math.floor(diffMs / (1000 * 60 * 60));
+        if (hoursLeft < 24) return `🔴 Faltam ${hoursLeft}h - URGENTE`;
+
+        const daysLeft = Math.floor(hoursLeft / 24);
+        if (daysLeft === 1) return '🟠 Falta 1 dia';
+        if (daysLeft <= 3) return `🟠 Faltam ${daysLeft} dias`;
+        if (daysLeft <= 7) return `🟡 Faltam ${daysLeft} dias`;
+        return `🟢 Faltam ${daysLeft} dias`;
       };
 
       todosContext = `
-📋 TAREFAS PENDENTES (considere ao montar rotinas):
+📋 TAREFAS PENDENTES (considere ao montar rotinas - ordenado por urgência):
 ${context.todos.map(t => {
-  const deadline = t.deadline ? ` | Prazo: ${t.deadline}` : ' | Sem prazo';
+  const countdown = getCountdown(t.deadlineISO);
   const duration = t.estimatedMinutes ? ` | ~${t.estimatedMinutes} min` : '';
-  return `- [${priorityLabels[t.priority] || t.priority}] ${t.content}${deadline}${duration}`;
+  const deadlineDate = t.deadline ? ` (${t.deadline})` : '';
+  return `- ${countdown}${deadlineDate}: ${t.content}${duration}`;
 }).join('\n')}
+
+⚠️ IMPORTANTE: As tarefas com countdown menor são MAIS URGENTES e devem ser priorizadas!
 `;
     }
 

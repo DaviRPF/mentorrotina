@@ -1,6 +1,6 @@
 'use client';
 
-import { format, formatDistanceToNow, isPast, isToday, isTomorrow } from 'date-fns';
+import { format, formatDistanceToNow, differenceInDays, differenceInHours, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { X, Check, Trash2, Clock, AlertTriangle, AlertCircle, Circle, CalendarClock } from 'lucide-react';
 import { useTodoStore, Todo } from '@/store/todo-store';
@@ -8,68 +8,97 @@ import { cn } from '@/lib/utils';
 
 const priorityConfig = {
   urgent: {
-    bg: 'bg-red-100 dark:bg-red-900/30',
-    border: 'border-red-300 dark:border-red-700',
-    text: 'text-red-700 dark:text-red-400',
     icon: AlertCircle,
-    label: 'Urgente',
+    color: 'text-red-600 dark:text-red-400',
   },
   high: {
-    bg: 'bg-orange-100 dark:bg-orange-900/30',
-    border: 'border-orange-300 dark:border-orange-700',
-    text: 'text-orange-700 dark:text-orange-400',
     icon: AlertTriangle,
-    label: 'Alta',
+    color: 'text-orange-600 dark:text-orange-400',
   },
   medium: {
-    bg: 'bg-blue-100 dark:bg-blue-900/30',
-    border: 'border-blue-300 dark:border-blue-700',
-    text: 'text-blue-700 dark:text-blue-400',
     icon: Clock,
-    label: 'Média',
+    color: 'text-blue-600 dark:text-blue-400',
   },
   low: {
-    bg: 'bg-gray-100 dark:bg-gray-800',
-    border: 'border-gray-300 dark:border-gray-700',
-    text: 'text-gray-600 dark:text-gray-400',
     icon: Circle,
-    label: 'Baixa',
+    color: 'text-gray-500 dark:text-gray-400',
   },
 };
+
+function getDeadlineInfo(deadline: Date | null): { text: string; urgency: 'overdue' | 'urgent' | 'soon' | 'normal' | 'none' } {
+  if (!deadline) {
+    return { text: 'Sem prazo definido', urgency: 'none' };
+  }
+
+  const now = new Date();
+
+  if (isPast(deadline)) {
+    const hoursAgo = Math.abs(differenceInHours(deadline, now));
+    if (hoursAgo < 24) {
+      return { text: `Atrasado há ${hoursAgo}h`, urgency: 'overdue' };
+    }
+    const daysAgo = Math.abs(differenceInDays(deadline, now));
+    return { text: `Atrasado há ${daysAgo} dia${daysAgo > 1 ? 's' : ''}`, urgency: 'overdue' };
+  }
+
+  const hoursLeft = differenceInHours(deadline, now);
+  const daysLeft = differenceInDays(deadline, now);
+
+  if (hoursLeft < 1) {
+    const minutesLeft = Math.max(0, Math.round((deadline.getTime() - now.getTime()) / 60000));
+    return { text: `Faltam ${minutesLeft} min`, urgency: 'urgent' };
+  }
+
+  if (hoursLeft < 24) {
+    return { text: `Faltam ${hoursLeft}h`, urgency: 'urgent' };
+  }
+
+  if (daysLeft === 1) {
+    return { text: 'Falta 1 dia', urgency: 'soon' };
+  }
+
+  if (daysLeft <= 3) {
+    return { text: `Faltam ${daysLeft} dias`, urgency: 'soon' };
+  }
+
+  if (daysLeft <= 7) {
+    return { text: `Faltam ${daysLeft} dias`, urgency: 'normal' };
+  }
+
+  return { text: `Faltam ${daysLeft} dias`, urgency: 'normal' };
+}
 
 function TodoItem({ todo }: { todo: Todo }) {
   const { completeTodo, deleteTodo } = useTodoStore();
   const config = priorityConfig[todo.priority];
   const Icon = config.icon;
+  const deadlineInfo = getDeadlineInfo(todo.deadline);
 
-  const formatDeadline = (deadline: Date | null) => {
-    if (!deadline) return null;
-
-    if (isToday(deadline)) {
-      return `Hoje às ${format(deadline, 'HH:mm')}`;
-    }
-    if (isTomorrow(deadline)) {
-      return `Amanhã às ${format(deadline, 'HH:mm')}`;
-    }
-    if (isPast(deadline)) {
-      return `Atrasado (${formatDistanceToNow(deadline, { locale: ptBR, addSuffix: true })})`;
-    }
-    return format(deadline, "EEE, d 'de' MMM 'às' HH:mm", { locale: ptBR });
+  const urgencyStyles = {
+    overdue: 'bg-red-50 dark:bg-red-900/20 border-red-300 dark:border-red-700',
+    urgent: 'bg-orange-50 dark:bg-orange-900/20 border-orange-300 dark:border-orange-700',
+    soon: 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-300 dark:border-yellow-700',
+    normal: 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700',
+    none: 'bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700',
   };
 
-  const isOverdue = todo.deadline && isPast(todo.deadline);
+  const urgencyTextStyles = {
+    overdue: 'text-red-600 dark:text-red-400 font-semibold',
+    urgent: 'text-orange-600 dark:text-orange-400 font-medium',
+    soon: 'text-yellow-600 dark:text-yellow-500',
+    normal: 'text-gray-600 dark:text-gray-400',
+    none: 'text-gray-400 dark:text-gray-500 italic',
+  };
 
   return (
     <div
       className={cn(
         'flex items-start gap-3 p-3 rounded-xl border transition-all',
-        config.bg,
-        config.border,
-        isOverdue && 'border-red-500 dark:border-red-600'
+        urgencyStyles[deadlineInfo.urgency]
       )}
     >
       {/* Priority indicator */}
-      <div className={cn('mt-0.5', config.text)}>
+      <div className={cn('mt-0.5', config.color)}>
         <Icon className="w-5 h-5" />
       </div>
 
@@ -79,27 +108,26 @@ function TodoItem({ todo }: { todo: Todo }) {
           {todo.content}
         </p>
 
-        <div className="flex flex-wrap items-center gap-2 mt-1">
+        <div className="flex flex-wrap items-center gap-2 mt-1.5">
+          {/* Deadline countdown */}
+          <span className={cn('text-sm flex items-center gap-1', urgencyTextStyles[deadlineInfo.urgency])}>
+            <CalendarClock className="w-3.5 h-3.5" />
+            {deadlineInfo.text}
+          </span>
+
+          {/* Original deadline date */}
           {todo.deadline && (
-            <span className={cn(
-              'text-xs flex items-center gap-1',
-              isOverdue ? 'text-red-600 dark:text-red-400 font-medium' : 'text-gray-500 dark:text-gray-400'
-            )}>
-              <CalendarClock className="w-3 h-3" />
-              {formatDeadline(todo.deadline)}
+            <span className="text-xs text-gray-400 dark:text-gray-500">
+              ({format(todo.deadline, "EEE, d/MM HH:mm", { locale: ptBR })})
             </span>
           )}
 
           {todo.estimatedMinutes && (
             <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
               <Clock className="w-3 h-3" />
-              {todo.estimatedMinutes} min
+              ~{todo.estimatedMinutes} min
             </span>
           )}
-
-          <span className={cn('text-xs px-1.5 py-0.5 rounded-full', config.bg, config.text)}>
-            {config.label}
-          </span>
         </div>
       </div>
 
@@ -125,21 +153,31 @@ function TodoItem({ todo }: { todo: Todo }) {
 }
 
 export function TodoList() {
-  const { isTodoListOpen, setTodoListOpen, getTodosForAI } = useTodoStore();
+  const { isTodoListOpen, setTodoListOpen, getPendingTodos } = useTodoStore();
 
   if (!isTodoListOpen) return null;
 
-  const { byDeadline } = getTodosForAI();
+  const todos = getPendingTodos();
 
-  const sections = [
-    { key: 'today', label: 'Hoje', todos: byDeadline.today },
-    { key: 'tomorrow', label: 'Amanhã', todos: byDeadline.tomorrow },
-    { key: 'thisWeek', label: 'Esta semana', todos: byDeadline.thisWeek },
-    { key: 'later', label: 'Depois', todos: byDeadline.later },
-    { key: 'noDeadline', label: 'Sem prazo', todos: byDeadline.noDeadline },
-  ].filter((s) => s.todos.length > 0);
+  // Sort by deadline (null deadlines at the end), then by priority
+  const sortedTodos = [...todos].sort((a, b) => {
+    // Overdue items first
+    const aOverdue = a.deadline && isPast(a.deadline);
+    const bOverdue = b.deadline && isPast(b.deadline);
+    if (aOverdue && !bOverdue) return -1;
+    if (!aOverdue && bOverdue) return 1;
 
-  const totalTodos = sections.reduce((acc, s) => acc + s.todos.length, 0);
+    // Then by deadline (nulls last)
+    if (a.deadline && !b.deadline) return -1;
+    if (!a.deadline && b.deadline) return 1;
+    if (a.deadline && b.deadline) {
+      return a.deadline.getTime() - b.deadline.getTime();
+    }
+
+    // Then by priority
+    const priorityOrder = { urgent: 0, high: 1, medium: 2, low: 3 };
+    return priorityOrder[a.priority] - priorityOrder[b.priority];
+  });
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -158,7 +196,7 @@ export function TodoList() {
               Tarefas Pendentes
             </h2>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              {totalTodos} {totalTodos === 1 ? 'tarefa' : 'tarefas'}
+              {sortedTodos.length} {sortedTodos.length === 1 ? 'tarefa' : 'tarefas'} • ordenado por urgência
             </p>
           </div>
           <button
@@ -170,8 +208,8 @@ export function TodoList() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-6">
-          {sections.length === 0 ? (
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          {sortedTodos.length === 0 ? (
             <div className="text-center py-8">
               <p className="text-gray-500 dark:text-gray-400">
                 Nenhuma tarefa pendente
@@ -181,17 +219,8 @@ export function TodoList() {
               </p>
             </div>
           ) : (
-            sections.map((section) => (
-              <div key={section.key}>
-                <h3 className="text-sm font-medium text-gray-500 dark:text-gray-400 mb-2">
-                  {section.label}
-                </h3>
-                <div className="space-y-2">
-                  {section.todos.map((todo) => (
-                    <TodoItem key={todo.id} todo={todo} />
-                  ))}
-                </div>
-              </div>
+            sortedTodos.map((todo) => (
+              <TodoItem key={todo.id} todo={todo} />
             ))
           )}
         </div>
