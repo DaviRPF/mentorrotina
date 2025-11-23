@@ -126,21 +126,30 @@ async function generateMentorResponse(
 
   switch (intent) {
     case 'criar_rotina':
-      // Para criar rotina: inclui memórias (preferências do usuário) mas não livros/todos/etc
+      // Para criar rotina: passa TODO o contexto, mas prompt restringe o que pode criar
       mentorPrompt = MENTOR_FOR_ROUTINE_PROMPT;
       fullPrompt = `${mentorPrompt}
 
-=== CONTEXTO ===
+=== CONTEXTO COMPLETO ===
 ${formatTemporalContext(context)}
 
 ${formatCalendarsContext(context)}
 
 ${formatEventsContext(context)}
 
-=== PREFERÊNCIAS DO USUÁRIO (RESPEITE!) ===
+${formatTodosContext(context)}
+
 ${formatMemoriesContext(context)}
 
-IMPORTANTE: Crie SOMENTE o que o usuário pediu, mas RESPEITE as preferências/memórias acima.`;
+${formatOrientationsContext(context)}
+
+${formatBooksContext(context)}
+
+${formatGoalsContext(context)}
+
+${formatHistoryContext(context)}
+
+LEMBRE-SE: Você tem acesso a todo contexto acima para CONSULTA, mas crie SOMENTE o que foi pedido.`;
       break;
 
     case 'modificar_evento':
