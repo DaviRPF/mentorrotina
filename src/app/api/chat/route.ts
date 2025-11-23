@@ -2,8 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { processChat } from '@/lib/ai/orchestrator';
 
 export async function POST(request: NextRequest) {
+  console.log('=== CHAT API v2 - MULTI-PROMPT ===');
   try {
     const body = await request.json();
+    console.log('Request body keys:', Object.keys(body));
     const {
       message,
       model = 'gemini-2.5-flash',
