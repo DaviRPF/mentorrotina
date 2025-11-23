@@ -132,6 +132,14 @@ async function generateMentorResponse(
     case 'criar_rotina':
       // Para criar rotina: passa TODO o contexto, mas prompt restringe o que pode criar
       mentorPrompt = MENTOR_FOR_ROUTINE_PROMPT;
+
+      // Debug: log do contexto
+      console.log('=== MENTOR: Contexto para criar_rotina ===');
+      console.log('Memórias:', context.memories.length, context.memories);
+      console.log('Livros:', context.bookReferences.length, context.bookReferences);
+      console.log('Orientações:', context.orientations);
+      console.log('Metas:', context.timeContexts.length, context.timeContexts);
+
       fullPrompt = `${mentorPrompt}
 
 === CONTEXTO COMPLETO ===
