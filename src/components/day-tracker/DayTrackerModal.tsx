@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, Send, Flag, Loader2, ChevronLeft, FileText, ImageIcon } from 'lucide-react';
+import { X, Send, Flag, Loader2, ChevronLeft, FileText, ImageIcon, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useDayTrackerStore, Message } from '@/store/day-tracker-store';
@@ -222,6 +222,15 @@ export function DayTrackerModal() {
     }
   };
 
+  const handleRegenerateReport = async () => {
+    if (!currentSession) return;
+    const report = await generateReport(currentSession.id);
+    if (report) {
+      // Report is already being shown, just need to refresh the view
+      // The store update will trigger a re-render with the new report
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -291,7 +300,32 @@ export function DayTrackerModal() {
             </div>
           </div>
         ) : showReport && currentSession?.report ? (
-          <DayReportView report={currentSession.report} />
+          <>
+            <DayReportView report={currentSession.report} />
+            {/* Regenerate Report Button */}
+            <div className="p-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={handleRegenerateReport}
+                disabled={isGeneratingReport}
+                className="w-full py-2 px-4 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-600"
+              >
+                {isGeneratingReport ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Regenerando relatório...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="w-4 h-4" />
+                    Regenerar Relatório
+                  </>
+                )}
+              </button>
+              <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
+                Recria o relatório com base na conversa atual
+              </p>
+            </div>
+          </>
         ) : (
           <>
             {/* Messages */}
