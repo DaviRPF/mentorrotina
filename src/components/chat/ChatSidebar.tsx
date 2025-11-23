@@ -868,7 +868,7 @@ export function ChatSidebar() {
 
               // For update/move actions, find the original event
               const originalEvent = (action.type === 'update' || action.type === 'move' || action.type === 'delete') && action.data.eventId
-                ? events.find(e => e.id === action.data.eventId || e.id.startsWith(action.data.eventId))
+                ? events.find(e => e.id === action.data.eventId || (action.data.eventId && e.id.startsWith(action.data.eventId)))
                 : null;
 
               return (
