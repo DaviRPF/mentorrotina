@@ -47,10 +47,77 @@ Responda APENAS com JSON (sem markdown, sem código):
 {"intent":"<categoria>","confidence":<0-1>,"needsActions":<true/false>,"summary":"<resumo em 5 palavras>"}`;
 
 /**
+ * Classificador de backup baseado em palavras-chave
+ * Usado quando a IA falha
+ */
+function backupClassifier(message: string): ClassificationResult {
+  const msg = message.toLowerCase();
+
+  // criar_rotina
+  if (
+    msg.includes('monta') || msg.includes('montar') ||
+    msg.includes('cria') || msg.includes('criar') ||
+    msg.includes('agenda') || msg.includes('agendar') ||
+    msg.includes('planeja') || msg.includes('planejar') ||
+    msg.includes('termina minha rotina') || msg.includes('terminar minha rotina') ||
+    msg.includes('completa minha rotina') || msg.includes('completar minha rotina') ||
+    msg.includes('faz minha rotina') || msg.includes('fazer minha rotina') ||
+    (msg.includes('rotina') && (msg.includes('amanhã') || msg.includes('semana') || msg.includes('hoje')))
+  ) {
+    return { intent: 'criar_rotina', confidence: 0.8, needsActions: true, summary: 'Criar rotina/eventos' };
+  }
+
+  // modificar_evento
+  if (
+    msg.includes('muda') || msg.includes('mudar') ||
+    msg.includes('move') || msg.includes('mover') ||
+    msg.includes('cancela') || msg.includes('cancelar') ||
+    msg.includes('apaga') || msg.includes('apagar') ||
+    msg.includes('deleta') || msg.includes('deletar') ||
+    msg.includes('remove') || msg.includes('remover') ||
+    msg.includes('exclui') || msg.includes('excluir') ||
+    msg.includes('ajusta') || msg.includes('ajustar')
+  ) {
+    return { intent: 'modificar_evento', confidence: 0.8, needsActions: true, summary: 'Modificar evento' };
+  }
+
+  // acompanhamento
+  if (
+    msg.includes('terminei') || msg.includes('acabei') ||
+    msg.includes('fiz') || msg.includes('completei') ||
+    msg.includes('tô na') || msg.includes('to na') ||
+    msg.includes('estou na') || msg.includes('cheguei')
+  ) {
+    return { intent: 'acompanhamento', confidence: 0.7, needsActions: false, summary: 'Reportando progresso' };
+  }
+
+  // pergunta_simples
+  if (
+    msg.includes('o que você acha') || msg.includes('como você') ||
+    msg.includes('o que devo') || msg.includes('vale a pena') ||
+    msg.includes('sugere') || msg.includes('recomenda')
+  ) {
+    return { intent: 'pergunta_simples', confidence: 0.7, needsActions: false, summary: 'Pergunta simples' };
+  }
+
+  return { intent: 'conversa_geral', confidence: 0.5, needsActions: false, summary: 'Conversa geral' };
+}
+
+/**
  * Extrai a classificação da resposta da IA
  */
-export function parseClassification(response: string): ClassificationResult {
+export function parseClassification(response: string, originalMessage?: string): ClassificationResult {
   console.log('parseClassification - Raw response:', response);
+
+  // Se resposta vazia, usa classificador de backup
+  if (!response || response.trim() === '') {
+    console.log('parseClassification - Empty response, using backup classifier');
+    if (originalMessage) {
+      return backupClassifier(originalMessage);
+    }
+    return { intent: 'conversa_geral', confidence: 0.3, needsActions: false, summary: 'Não classificado' };
+  }
+
   try {
     const jsonMatch = response.match(/\{[\s\S]*\}/);
     console.log('parseClassification - JSON match:', jsonMatch?.[0]);
@@ -68,12 +135,10 @@ export function parseClassification(response: string): ClassificationResult {
     console.error('Failed to parse classification:', response, e);
   }
 
-  // Default fallback
-  console.log('parseClassification - Using fallback');
-  return {
-    intent: 'conversa_geral',
-    confidence: 0.3,
-    needsActions: false,
-    summary: 'Não classificado',
-  };
+  // Se não conseguiu parsear JSON, usa classificador de backup
+  console.log('parseClassification - Using backup classifier');
+  if (originalMessage) {
+    return backupClassifier(originalMessage);
+  }
+  return { intent: 'conversa_geral', confidence: 0.3, needsActions: false, summary: 'Não classificado' };
 }

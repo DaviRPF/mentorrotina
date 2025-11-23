@@ -106,7 +106,8 @@ MENSAGEM DO USUÁRIO: "${message}"`;
   const response = await callGeminiSimple(prompt, FAST_CONFIG, model);
   console.log('=== CLASSIFIER: Resposta raw ===');
   console.log(response);
-  return parseClassification(response);
+  // Passa a mensagem original para o classificador de backup caso a IA falhe
+  return parseClassification(response, message);
 }
 
 /**
