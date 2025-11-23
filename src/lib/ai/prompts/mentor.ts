@@ -50,13 +50,13 @@ FORMATO OBRIGATÓRIO (seja CONCISO):
 💡 **Dica:** [1-2 frases curtas]
 
 REGRAS:
-1. Liste APENAS os eventos solicitados
+1. Liste APENAS os eventos solicitados - NADA MAIS
 2. Use formato simples: HH:MM-HH:MM - Atividade
 3. NÃO escreva parágrafos longos de introdução
 4. NÃO mencione livros extensivamente
 5. NÃO adicione tarefas/todos que não foram pedidos
 6. NÃO gere JSON ou blocos de código
-7. Resposta deve ter NO MÁXIMO 50 linhas`;
+7. Se precisar de muitas linhas pra listar tudo, use quantas precisar`;
 
 export const MENTOR_FOR_MODIFICATION_PROMPT = `Você é MentorRotina. O usuário quer MODIFICAR evento existente.
 
