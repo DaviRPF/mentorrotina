@@ -49,10 +49,13 @@ Responda APENAS com JSON:
  * Extrai a classificação da resposta da IA
  */
 export function parseClassification(response: string): ClassificationResult {
+  console.log('parseClassification - Raw response:', response);
   try {
     const jsonMatch = response.match(/\{[\s\S]*\}/);
+    console.log('parseClassification - JSON match:', jsonMatch?.[0]);
     if (jsonMatch) {
       const parsed = JSON.parse(jsonMatch[0]);
+      console.log('parseClassification - Parsed:', parsed);
       return {
         intent: parsed.intent || 'conversa_geral',
         confidence: parsed.confidence || 0.5,
@@ -60,11 +63,12 @@ export function parseClassification(response: string): ClassificationResult {
         summary: parsed.summary || '',
       };
     }
-  } catch {
-    console.error('Failed to parse classification:', response);
+  } catch (e) {
+    console.error('Failed to parse classification:', response, e);
   }
 
   // Default fallback
+  console.log('parseClassification - Using fallback');
   return {
     intent: 'conversa_geral',
     confidence: 0.3,
