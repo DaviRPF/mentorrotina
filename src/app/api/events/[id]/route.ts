@@ -177,7 +177,14 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
 
       if (deleteType === 'all') {
         // Delete the parent event (cascades to all)
-        await prisma.event.delete({ where: { id: parentId } });
+        try {
+          await prisma.event.delete({ where: { id: parentId } });
+        } catch (deleteError) {
+          // If parent already deleted, that's fine
+          if ((deleteError as { code?: string }).code !== 'P2025') {
+            throw deleteError;
+          }
+        }
         return NextResponse.json({ success: true, deleted: 'all' });
       }
 
@@ -207,11 +214,24 @@ export async function DELETE(request: NextRequest, { params }: RouteParams) {
       return NextResponse.json({ success: true, deleted: 'this' });
     }
 
-    // Regular event deletion
+    // Regular event deletion - first check if it exists
+    const existingEvent = await prisma.event.findUnique({ where: { id } });
+
+    if (!existingEvent) {
+      // Event doesn't exist, might have been already deleted
+      return NextResponse.json({ success: true, message: 'Event already deleted or not found' });
+    }
+
     await prisma.event.delete({ where: { id } });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error deleting event:', error);
+
+    // Handle case where event was deleted between check and delete (race condition)
+    if ((error as { code?: string }).code === 'P2025') {
+      return NextResponse.json({ success: true, message: 'Event already deleted' });
+    }
+
     return NextResponse.json(
       { error: 'Failed to delete event' },
       { status: 500 }
