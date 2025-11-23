@@ -126,18 +126,21 @@ async function generateMentorResponse(
 
   switch (intent) {
     case 'criar_rotina':
-      // Para criar rotina: contexto MÍNIMO para não confundir a IA
+      // Para criar rotina: inclui memórias (preferências do usuário) mas não livros/todos/etc
       mentorPrompt = MENTOR_FOR_ROUTINE_PROMPT;
       fullPrompt = `${mentorPrompt}
 
-=== CONTEXTO MÍNIMO ===
+=== CONTEXTO ===
 ${formatTemporalContext(context)}
 
 ${formatCalendarsContext(context)}
 
 ${formatEventsContext(context)}
 
-IMPORTANTE: Crie SOMENTE o que o usuário pediu. Nada mais.`;
+=== PREFERÊNCIAS DO USUÁRIO (RESPEITE!) ===
+${formatMemoriesContext(context)}
+
+IMPORTANTE: Crie SOMENTE o que o usuário pediu, mas RESPEITE as preferências/memórias acima.`;
       break;
 
     case 'modificar_evento':

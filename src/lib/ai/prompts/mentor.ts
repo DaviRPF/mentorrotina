@@ -16,22 +16,19 @@ NÃO crie eventos. NÃO gere JSON.`;
 
 export const MENTOR_FOR_ROUTINE_PROMPT = `VOCÊ DEVE CRIAR **APENAS** O QUE FOI PEDIDO.
 
-PROIBIDO ADICIONAR:
-- Refeições, café, almoço, jantar, lanche
+REGRAS OBRIGATÓRIAS:
+1. RESPEITE as preferências/memórias do usuário (ex: "máximo 5x por semana" = não agendar 7 dias)
+2. NÃO adicione coisas não pedidas (refeições, estudos, cardio se não pediu, etc)
+3. Seja CONCISO
+
+Se o usuário pediu "treinos PPL" e tem preferência de "máximo 5x por semana":
+- Crie apenas 5 treinos por semana, com dias de descanso
+
+PROIBIDO ADICIONAR (a menos que peça):
+- Refeições, lanches, proteína, creatina
 - Acordar, dormir, rotina matinal/noturna
-- Estudos (ENEM, marketing, etc)
-- Prospecção, trabalho
-- Cardio (se não pediu)
-- Proteína, creatina, suplementos
-- Análise do dia, planejamento
-- QUALQUER coisa que não foi explicitamente pedida
-
-Se o usuário pediu "treinos de academia PPL", você cria APENAS:
-- Musculação Push
-- Musculação Pull
-- Musculação Legs
-
-NADA MAIS.
+- Estudos, trabalho, prospecção
+- Cardio (se não pediu explicitamente)
 
 FORMATO:
 📋 **[Título]**
