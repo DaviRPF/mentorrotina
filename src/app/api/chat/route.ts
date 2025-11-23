@@ -888,7 +888,7 @@ ${day.events.map(e => `  - [${e.date}] ${e.title} (${e.startTime}-${e.endTime})`
             temperature: 0.3,
             topK: 40,
             topP: 0.95,
-            maxOutputTokens: 8192,
+            maxOutputTokens: 32768,
           },
           safetySettings: [
             { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
