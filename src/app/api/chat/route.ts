@@ -277,20 +277,27 @@ EXEMPLO ERRADO (NÃO FAÇA ISSO):
 
 O usuário PRECISA ver a rotina descrita na mensagem, não apenas aceitar ações cegas!
 
-=== MOVER/DELETAR EVENTOS EXISTENTES ===
-Quando o usuário pedir para MOVER ou DELETAR um evento específico que JÁ EXISTE no calendário:
-- Gere APENAS a ação necessária para aquele evento (não recrie a rotina inteira!)
-- Para MOVER: use type "move" com eventId dentro do data
-- Para DELETAR: use type "delete" com eventId dentro do data
+=== MODIFICAR/MOVER/DELETAR EVENTOS EXISTENTES ===
+Quando precisar alterar um evento que JÁ EXISTE no calendário:
+- Para ATUALIZAR título/descrição/horário: use type "update" com eventId
+- Para MOVER horário: use type "move" com eventId e novos horários
+- Para DELETAR: use type "delete" com eventId
+
+IMPORTANTE: O eventId está disponível na lista "Eventos de hoje e próximos" no contexto!
+
+Exemplo ATUALIZAR evento (mudar título para incluir creatina):
+\`\`\`actions
+[{"type":"update","description":"Atualizar Pós-treino para incluir creatina","data":{"eventId":"ID_DO_EVENTO_AQUI","title":"Pós-treino e Lanche (Proteína: 30g + Creatina: 10g)"}}]
+\`\`\`
 
 Exemplo MOVER evento:
 \`\`\`actions
-[{"type":"move","description":"Mover Banho de Sáb 22/11 12:00 → Dom 23/11 12:00","data":{"eventId":"ID_DO_EVENTO_AQUI","startTime":"2025-11-23T12:00:00","endTime":"2025-11-23T12:30:00"}}]
+[{"type":"move","description":"Mover Café 06:45 → 06:30","data":{"eventId":"ID_DO_EVENTO_AQUI","startTime":"2025-11-23T06:30:00","endTime":"2025-11-23T07:00:00"}}]
 \`\`\`
 
 Exemplo DELETAR evento:
 \`\`\`actions
-[{"type":"delete","description":"Deletar Academia - Sáb 22/11 14:30-16:00","data":{"eventId":"ID_DO_EVENTO_AQUI"}}]
+[{"type":"delete","description":"Deletar Academia","data":{"eventId":"ID_DO_EVENTO_AQUI"}}]
 \`\`\`
 
 ⚠️ REGRA DE AÇÕES: Quando o usuário PEDIR para criar/montar rotina e você mencionar horários/atividades, inclua o bloco \`\`\`actions com TODAS as ações. Se descreveu 10 atividades, gere 10 ações. MAS se o usuário só fez uma PERGUNTA (ex: "o que devo fazer?"), NÃO crie eventos - apenas responda conversacionalmente.
@@ -308,6 +315,27 @@ EXEMPLO: Se já existe "Almoço 12:00-13:00" no calendário:
 - ❌ ERRADO: Criar evento 11:30-13:30 (conflita com o almoço existente)
 
 Se o usuário PEDIR explicitamente para substituir um evento existente, aí sim você pode criar no mesmo horário.
+
+=== REGRA CRÍTICA: NÃO DUPLIQUE EVENTOS ===
+⚠️⚠️⚠️ MUITO IMPORTANTE ⚠️⚠️⚠️
+Quando o usuário pedir AJUSTES em uma rotina que JÁ FOI ACEITA e está no calendário:
+
+1. NÃO crie todos os eventos de novo! Isso cria DUPLICATAS!
+2. Faça APENAS as mudanças necessárias:
+   - Para ADICIONAR algo novo: crie apenas o evento novo
+   - Para MODIFICAR um evento existente: use "move" para mudar horário OU sugira deletar e criar novo
+   - Para encaixar algo: ajuste UM ou DOIS eventos, não todos
+
+EXEMPLO - Usuário quer adicionar creatina na rotina existente:
+- ❌ ERRADO: Criar 15 novos eventos (duplicando tudo que já existe)
+- ✅ CORRETO: Modificar APENAS o evento "Pós-treino" para incluir creatina no título/descrição
+
+EXEMPLO - Usuário quer ajustar horário do café:
+- ❌ ERRADO: Recriar toda a rotina com novos eventos
+- ✅ CORRETO: Usar "move" para mover os eventos afetados
+
+Se a rotina ainda NÃO foi aceita (eventos ainda pendentes), aí sim você pode reenviar todas as ações atualizadas.
+Se já foi ACEITA e está no calendário, faça ajustes PONTUAIS!
 
 === REGRA CRÍTICA: PERGUNTAS vs PEDIDOS DE ROTINA ===
 ⚠️ MUITO IMPORTANTE: Diferencie PERGUNTAS SIMPLES de PEDIDOS DE ROTINA!
