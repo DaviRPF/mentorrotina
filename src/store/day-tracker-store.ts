@@ -46,6 +46,7 @@ interface DayTrackerStore {
   reports: DayReport[];
   isLoading: boolean;
   isGeneratingReport: boolean;
+  isDeletingReport: boolean;
 
   // Actions
   openTracker: (date: Date) => void;
@@ -55,12 +56,14 @@ interface DayTrackerStore {
   setReports: (reports: DayReport[]) => void;
   setLoading: (loading: boolean) => void;
   setGeneratingReport: (generating: boolean) => void;
+  setDeletingReport: (deleting: boolean) => void;
 
   // API calls
   fetchOrCreateSession: (date: Date) => Promise<DaySession | null>;
   fetchSessions: () => Promise<void>;
   fetchReports: () => Promise<void>;
   generateReport: (sessionId: string) => Promise<DayReport | null>;
+  deleteReport: (sessionId: string) => Promise<boolean>;
   addMessageToSession: (message: Message) => void;
 }
 
@@ -73,6 +76,7 @@ export const useDayTrackerStore = create<DayTrackerStore>((set, get) => ({
   reports: [],
   isLoading: false,
   isGeneratingReport: false,
+  isDeletingReport: false,
 
   // Actions
   openTracker: (date) => set({ isOpen: true, selectedDate: date }),
@@ -82,6 +86,7 @@ export const useDayTrackerStore = create<DayTrackerStore>((set, get) => ({
   setReports: (reports) => set({ reports }),
   setLoading: (loading) => set({ isLoading: loading }),
   setGeneratingReport: (generating) => set({ isGeneratingReport: generating }),
+  setDeletingReport: (deleting) => set({ isDeletingReport: deleting }),
 
   // API calls
   fetchOrCreateSession: async (date) => {
@@ -184,6 +189,37 @@ export const useDayTrackerStore = create<DayTrackerStore>((set, get) => ({
       console.error('Error generating report:', error);
       set({ isGeneratingReport: false });
       return null;
+    }
+  },
+
+  deleteReport: async (sessionId) => {
+    set({ isDeletingReport: true });
+    try {
+      const response = await fetch(`/api/day-sessions/${sessionId}/report`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Update current session - remove report and set status back to active
+        const { currentSession } = get();
+        if (currentSession && currentSession.id === sessionId) {
+          set({
+            currentSession: { ...currentSession, status: 'active', report: undefined },
+            isDeletingReport: false,
+          });
+        }
+
+        // Refresh reports list
+        get().fetchReports();
+
+        return true;
+      }
+      set({ isDeletingReport: false });
+      return false;
+    } catch (error) {
+      console.error('Error deleting report:', error);
+      set({ isDeletingReport: false });
+      return false;
     }
   },
 

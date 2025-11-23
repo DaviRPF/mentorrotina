@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, Send, Flag, Loader2, ChevronLeft, FileText, ImageIcon, RefreshCw, Sparkles, MessageSquare, Clock, ChevronRight } from 'lucide-react';
+import { X, Send, Flag, Loader2, ChevronLeft, FileText, ImageIcon, RefreshCw, Sparkles, MessageSquare, Clock, ChevronRight, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useDayTrackerStore, Message } from '@/store/day-tracker-store';
@@ -41,9 +41,11 @@ export function DayTrackerModal() {
     currentSession,
     isLoading: isSessionLoading,
     isGeneratingReport,
+    isDeletingReport,
     closeTracker,
     fetchOrCreateSession,
     generateReport,
+    deleteReport,
     addMessageToSession,
   } = useDayTrackerStore();
 
@@ -255,6 +257,14 @@ export function DayTrackerModal() {
     await generateReport(currentSession.id);
   };
 
+  const handleDeleteReport = async () => {
+    if (!currentSession) return;
+    const success = await deleteReport(currentSession.id);
+    if (success) {
+      setShowReport(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   const todayEvents = getTodayEvents();
@@ -381,27 +391,46 @@ export function DayTrackerModal() {
         ) : showReport && currentSession?.report ? (
           <>
             <DayReportView report={currentSession.report} />
-            {/* Regenerate Report Button */}
+            {/* Report Actions */}
             <div className="p-4 border-t border-gray-200 dark:border-gray-700">
-              <button
-                onClick={handleRegenerateReport}
-                disabled={isGeneratingReport}
-                className="w-full py-2 px-4 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-600"
-              >
-                {isGeneratingReport ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Regenerando relatório...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="w-4 h-4" />
-                    Regenerar Relatório
-                  </>
-                )}
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleRegenerateReport}
+                  disabled={isGeneratingReport || isDeletingReport}
+                  className="flex-1 py-2 px-4 bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-gray-200 dark:border-gray-600"
+                >
+                  {isGeneratingReport ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Regenerando...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="w-4 h-4" />
+                      Regenerar
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={handleDeleteReport}
+                  disabled={isGeneratingReport || isDeletingReport}
+                  className="py-2 px-4 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg font-medium hover:bg-red-100 dark:hover:bg-red-900/40 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 border border-red-200 dark:border-red-800"
+                >
+                  {isDeletingReport ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Apagando...
+                    </>
+                  ) : (
+                    <>
+                      <Trash2 className="w-4 h-4" />
+                      Apagar
+                    </>
+                  )}
+                </button>
+              </div>
               <p className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
-                Recria o relatório com base na conversa atual
+                Regenerar recria o relatório. Apagar remove e volta para o chat.
               </p>
             </div>
           </>

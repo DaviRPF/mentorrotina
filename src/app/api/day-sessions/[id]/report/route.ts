@@ -133,3 +133,36 @@ export async function GET(
     return NextResponse.json({ error: 'Failed to fetch report' }, { status: 500 });
   }
 }
+
+// DELETE - Apagar relatório
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+
+    const report = await prisma.dayReport.findFirst({
+      where: { daySessionId: id },
+    });
+
+    if (!report) {
+      return NextResponse.json({ error: 'Report not found' }, { status: 404 });
+    }
+
+    await prisma.dayReport.delete({
+      where: { id: report.id },
+    });
+
+    // Voltar status da sessão para 'active'
+    await prisma.daySession.update({
+      where: { id },
+      data: { status: 'active' },
+    });
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting report:', error);
+    return NextResponse.json({ error: 'Failed to delete report' }, { status: 500 });
+  }
+}
