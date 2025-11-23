@@ -15,6 +15,8 @@ import { SettingsModal } from '@/components/modals/SettingsModal';
 import { ChatSidebar } from '@/components/chat/ChatSidebar';
 import { DayTrackerModal } from '@/components/day-tracker/DayTrackerModal';
 import { NotificationProvider } from './NotificationProvider';
+import { QuickTodoInput } from '@/components/todos/QuickTodoInput';
+import { TodoList } from '@/components/todos/TodoList';
 
 export function Calendar() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -155,6 +157,8 @@ export function Calendar() {
       <ChatSidebar />
       <DayTrackerModal />
       <NotificationProvider />
+      <QuickTodoInput />
+      <TodoList />
     </div>
   );
 }

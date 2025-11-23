@@ -126,3 +126,20 @@ model DayReport {
   createdAt      DateTime   @default(now())
   updatedAt      DateTime   @updatedAt
 }
+
+// Quick Todos - Tarefas rápidas com deadline
+model Todo {
+  id               String    @id @default(uuid())
+  content          String    // O que precisa fazer
+  rawDeadline      String?   // Texto original do deadline (ex: "até sexta 18h")
+  deadline         DateTime? // Deadline parseado
+  priority         String    @default("medium") // urgent, high, medium, low
+  estimatedMinutes Int?      // Tempo estimado em minutos
+  status           String    @default("pending") // pending, scheduled, completed, cancelled
+
+  // Vínculo com evento agendado
+  scheduledEventId String?
+
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+}

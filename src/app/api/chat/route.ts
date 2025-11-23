@@ -32,7 +32,7 @@ interface CalendarContext {
     name: string;
     color: string;
   }[];
-  // New: Extended history for AI context
+  // Extended history for AI context
   pastEvents: {
     date: string;
     events: { title: string; startTime: string; endTime: string }[];
@@ -50,6 +50,16 @@ interface CalendarContext {
     insights: string[];
     completionRate: number;
   }[];
+  // Quick todos for AI to consider
+  todos: {
+    id: string;
+    content: string;
+    deadline: string | null;
+    deadlineISO: string | null;
+    priority: string;
+    estimatedMinutes: number | null;
+    status: string;
+  }[];
 }
 
 async function getCalendarContext(): Promise<CalendarContext> {
@@ -62,7 +72,7 @@ async function getCalendarContext(): Promise<CalendarContext> {
   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
   const dayName = format(now, 'EEEE', { locale: ptBR }); // "sábado", "domingo", etc.
 
-  const [events, calendars, dayReports] = await Promise.all([
+  const [events, calendars, dayReports, todos] = await Promise.all([
     prisma.event.findMany({
       where: {
         OR: [
@@ -86,6 +96,16 @@ async function getCalendarContext(): Promise<CalendarContext> {
         daySession: true,
       },
       orderBy: { createdAt: 'desc' },
+    }),
+    // Fetch pending todos
+    prisma.todo.findMany({
+      where: {
+        status: { in: ['pending', 'scheduled'] },
+      },
+      orderBy: [
+        { deadline: 'asc' },
+        { createdAt: 'desc' },
+      ],
     }),
   ]);
 
@@ -166,6 +186,15 @@ async function getCalendarContext(): Promise<CalendarContext> {
     pastEvents: pastEvents.slice(-15), // Last 15 days with events
     futureEvents: futureEvents.slice(0, 15), // Next 15 days with events
     reports,
+    todos: todos.map(t => ({
+      id: t.id,
+      content: t.content,
+      deadline: t.deadline ? format(t.deadline, "EEEE, d/MM 'às' HH:mm", { locale: ptBR }) : null,
+      deadlineISO: t.deadline ? t.deadline.toISOString() : null,
+      priority: t.priority,
+      estimatedMinutes: t.estimatedMinutes,
+      status: t.status,
+    })),
   };
 }
 
@@ -277,7 +306,23 @@ DIA DA SEMANA: {{DAY_OF_WEEK}}
 É FINAL DE SEMANA: {{IS_WEEKEND}}
 HORA ATUAL: {{CURRENT_TIME}}
 
-ATENÇÃO: Respeite o dia da semana! Se uma atividade é só para dias úteis (segunda a sexta), NÃO agende para sábado/domingo. Se hoje é final de semana, ajuste a rotina apropriadamente.`;
+ATENÇÃO: Respeite o dia da semana! Se uma atividade é só para dias úteis (segunda a sexta), NÃO agende para sábado/domingo. Se hoje é final de semana, ajuste a rotina apropriadamente.
+
+=== TAREFAS PENDENTES (TODOS) - PRIORIDADE NA ROTINA ===
+O usuário tem tarefas (todos) com prazos que DEVEM ser consideradas ao montar a rotina.
+Quando você criar uma rotina ou sugerir atividades:
+1. PRIORIZE as tarefas com deadline mais próximo (urgent > high > medium > low)
+2. ENCAIXE as tarefas nos horários livres do calendário
+3. Considere o tempo estimado de cada tarefa
+4. NÃO precisa agendar TODAS as tarefas de uma vez - distribua de forma realista
+5. Ao criar evento para uma tarefa, mencione que está atendendo à tarefa pendente
+6. Tarefas SEM deadline podem ser encaixadas quando houver tempo livre
+
+PRIORIDADES:
+- urgent: PRECISA ser feita HOJE
+- high: Deadline em até 3 dias
+- medium: Deadline em até 7 dias
+- low: Deadline além de 7 dias ou sem deadline`;
 
 const DAY_TRACKER_PROMPT = `Você é o Companheiro de Dia do MentorRotina. Seu papel é ACOMPANHAR o usuário ao longo do dia, ajudando-o a manter o foco e completar suas atividades.
 
@@ -455,6 +500,26 @@ ${day.events.map(e => `  - ${e.title} (${e.startTime}-${e.endTime})`).join('\n')
 `;
     }
 
+    // Build todos context
+    let todosContext = '';
+    if (context.todos.length > 0) {
+      const priorityLabels: Record<string, string> = {
+        urgent: '🔴 URGENTE',
+        high: '🟠 Alta',
+        medium: '🟡 Média',
+        low: '🟢 Baixa',
+      };
+
+      todosContext = `
+📋 TAREFAS PENDENTES (considere ao montar rotinas):
+${context.todos.map(t => {
+  const deadline = t.deadline ? ` | Prazo: ${t.deadline}` : ' | Sem prazo';
+  const duration = t.estimatedMinutes ? ` | ~${t.estimatedMinutes} min` : '';
+  return `- [${priorityLabels[t.priority] || t.priority}] ${t.content}${deadline}${duration}`;
+}).join('\n')}
+`;
+    }
+
     const calendarContextMessage = `
 CONTEXTO ATUAL:
 
@@ -465,7 +530,7 @@ Eventos de hoje e próximos:
 ${context.events.length > 0
   ? context.events.map((e) => `- "${e.title}" | ${e.startTime}-${e.endTime} | ID: ${e.id}${e.isRecurring ? ' | Recorrente' : ''}`).join('\n')
   : 'Nenhum evento.'}
-${historicalContext}
+${todosContext}${historicalContext}
 ${mentorContext}`;
 
     // Build contents based on whether it's day tracker or regular chat
