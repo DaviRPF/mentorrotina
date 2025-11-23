@@ -60,7 +60,6 @@ export async function POST(request: Request) {
     const todo = await prisma.todo.create({
       data: {
         content: cleanContent,
-        rawDeadline: content !== cleanContent ? content : null,
         deadline,
         priority,
         estimatedMinutes: estimatedMinutes || null,

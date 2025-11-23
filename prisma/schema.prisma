@@ -58,12 +58,78 @@ model Message {
 }
 
 model UserSettings {
-  id                  String   @id @default("default")
-  personalContext     String   @default("")
-  generalOrientations String   @default("")
-  bookSummaries       String   @default("[]")
-  timeContexts        String   @default("{}")
-  updatedAt           DateTime @updatedAt
+  id                     String   @id @default("default")
+
+  // AI Settings
+  geminiModel            String   @default("gemini-2.5-flash")
+  aiEnabled              Boolean  @default(true)
+
+  // Mentor Orientations
+  generalOrientations    String   @default("")
+
+  // Calendar Settings
+  weekStartsOn           Int      @default(0)
+  defaultView            String   @default("week")
+  defaultEventDuration   Int      @default(60)
+  defaultReminderMinutes Int?     @default(15)
+
+  // Appearance
+  theme                  String   @default("system")
+  compactMode            Boolean  @default(false)
+  showWeekNumbers        Boolean  @default(false)
+
+  // Notifications
+  enableNotifications    Boolean  @default(true)
+  soundEnabled           Boolean  @default(true)
+
+  // Time format
+  use24HourFormat        Boolean  @default(true)
+
+  // Working hours
+  workingHoursStart      Int      @default(9)
+  workingHoursEnd        Int      @default(18)
+  workingDays            String   @default("[1,2,3,4,5]")
+
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  // Relations
+  memories               Memory[]
+  bookReferences         BookReference[]
+  timeContexts           TimeContext[]
+}
+
+model Memory {
+  id             String       @id @default(uuid())
+  content        String
+  userSettingsId String       @default("default")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  userSettings   UserSettings @relation(fields: [userSettingsId], references: [id], onDelete: Cascade)
+}
+
+model BookReference {
+  id             String       @id @default(uuid())
+  title          String
+  topics         String       @default("")
+  enabled        Boolean      @default(true)
+  userSettingsId String       @default("default")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  userSettings   UserSettings @relation(fields: [userSettingsId], references: [id], onDelete: Cascade)
+}
+
+model TimeContext {
+  id             String       @id @default(uuid())
+  type           String       // weekly, monthly, quarterly, sixMonth, yearly
+  content        String       @default("")
+  contentUpdatedAt DateTime?  // when content was last updated (for countdown)
+  userSettingsId String       @default("default")
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  userSettings   UserSettings @relation(fields: [userSettingsId], references: [id], onDelete: Cascade)
+
+  @@unique([userSettingsId, type])
 }
 
 model DaySession {
@@ -94,4 +160,16 @@ model DayReport {
   createdAt       DateTime   @default(now())
   updatedAt       DateTime   @updatedAt
   daySession      DaySession @relation(fields: [daySessionId], references: [id], onDelete: Cascade)
+}
+
+model Todo {
+  id               String    @id @default(uuid())
+  content          String    // Original user input
+  priority         String    @default("medium") // urgent, high, medium, low
+  status           String    @default("pending") // pending, completed, cancelled
+  deadline         DateTime?
+  estimatedMinutes Int?
+  completedAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
