@@ -101,7 +101,11 @@ async function classifyIntent(
 
 MENSAGEM DO USUÁRIO: "${message}"`;
 
+  console.log('=== CLASSIFIER: Chamando Gemini ===');
+  console.log('Prompt length:', prompt.length);
   const response = await callGeminiSimple(prompt, FAST_CONFIG, model);
+  console.log('=== CLASSIFIER: Resposta raw ===');
+  console.log(response);
   return parseClassification(response);
 }
 
