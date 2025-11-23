@@ -196,29 +196,14 @@ async function generateActions(
   intent: IntentType,
   model: string = 'gemini-2.5-flash'
 ): Promise<CalendarAction[]> {
-  // Verifica se a resposta requer geração de ações
-  const hasSchedulePattern = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/.test(mentorResponse);
-  const hasDeletePattern = /remover|deletar|apagar|excluir|🗑️/i.test(mentorResponse);
-  const hasMovePattern = /mover|📦/i.test(mentorResponse);
-  const hasUpdatePattern = /atualizar|✏️/i.test(mentorResponse);
-  const hasEventIds = /ID:\s*[a-f0-9-]+/i.test(mentorResponse);
-
-  const needsActions = hasSchedulePattern ||
-    ((hasDeletePattern || hasMovePattern || hasUpdatePattern) && hasEventIds) ||
-    intent === 'modificar_evento';
-
-  if (!needsActions) {
-    console.log('generateActions: Nenhum padrão de ação detectado');
+  // A IA já classificou a intenção - confiamos nela
+  // Se é criar_rotina ou modificar_evento, geramos ações
+  if (intent !== 'criar_rotina' && intent !== 'modificar_evento') {
+    console.log('generateActions: Intent não requer ações -', intent);
     return [];
   }
 
-  console.log('generateActions: Padrões detectados -', {
-    hasSchedulePattern,
-    hasDeletePattern,
-    hasMovePattern,
-    hasUpdatePattern,
-    hasEventIds
-  });
+  console.log('generateActions: Gerando ações para intent -', intent);
 
   const defaultCalendarId = context.calendars[0]?.id || '';
 
