@@ -45,6 +45,9 @@ export interface PendingMemoryAction {
   newContent?: string; // for create/update - what it will be
   reason: string;
   status: 'pending' | 'accepted' | 'rejected';
+  // Store original values so they can be restored when switching types
+  _originalMemoryId?: string;
+  _originalCurrentContent?: string;
 }
 
 interface ChatStore {
@@ -209,18 +212,32 @@ export const useChatStore = create<ChatStore>((set, get) => ({
       pendingMemoryActions: state.pendingMemoryActions.map((action) => {
         if (action.id !== id) return action;
 
-        // When changing from update to create, clear the memoryId and currentContent
-        if (newType === 'create') {
+        // When changing from update to create, store original values and clear active ones
+        if (newType === 'create' && action.type === 'update') {
           return {
             ...action,
             type: 'create',
+            // Store originals before clearing
+            _originalMemoryId: action._originalMemoryId || action.memoryId,
+            _originalCurrentContent: action._originalCurrentContent || action.currentContent,
+            // Clear active values
             memoryId: undefined,
             currentContent: undefined,
           };
         }
 
-        // When changing from create to update (less common), just change the type
-        return { ...action, type: newType };
+        // When changing from create back to update, restore original values
+        if (newType === 'update' && action.type === 'create') {
+          return {
+            ...action,
+            type: 'update',
+            // Restore from originals
+            memoryId: action._originalMemoryId,
+            currentContent: action._originalCurrentContent,
+          };
+        }
+
+        return action;
       }),
     }));
   },
