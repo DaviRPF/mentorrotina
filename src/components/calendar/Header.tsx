@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search, Menu, Sun, Moon, Settings, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -31,6 +31,15 @@ export function Header({ onMenuClick }: HeaderProps) {
   const { setIsSettingsOpen, aiEnabled, theme, updateSettings } = useSettingsStore();
   const { toggleOpen: toggleChat, isOpen: isChatOpen } = useChatStore();
 
+  // Track if component is mounted (to avoid hydration mismatch)
+  const [mounted, setMounted] = useState(false);
+  const [isDark, setIsDark] = useState(false);
+
+  // Set mounted state
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   // Apply theme based on settings
   useEffect(() => {
     const applyTheme = () => {
@@ -42,6 +51,9 @@ export function Header({ onMenuClick }: HeaderProps) {
       } else {
         document.documentElement.classList.remove('dark');
       }
+
+      // Update isDark state for the icon
+      setIsDark(shouldBeDark);
     };
 
     applyTheme();
@@ -82,10 +94,6 @@ export function Header({ onMenuClick }: HeaderProps) {
     { label: 'Mês', value: 'month' },
     { label: 'Agenda', value: 'agenda' },
   ];
-
-  // Compute if currently dark for the icon
-  const prefersDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  const isDark = theme === 'dark' || (theme === 'system' && prefersDark);
 
   return (
     <header className="h-14 sm:h-16 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-between px-2 sm:px-4 gap-1 sm:gap-4">
@@ -208,13 +216,15 @@ export function Header({ onMenuClick }: HeaderProps) {
           <Settings className="w-5 h-5 text-gray-600 dark:text-gray-400" />
         </button>
 
-        {/* Dark Mode Button */}
+        {/* Dark Mode Button - only show correct icon after mount to avoid hydration mismatch */}
         <button
           onClick={toggleDarkMode}
           className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
-          title={isDark ? 'Modo claro' : 'Modo escuro'}
+          title={mounted ? (isDark ? 'Modo claro' : 'Modo escuro') : 'Alternar tema'}
         >
-          {isDark ? (
+          {!mounted ? (
+            <Moon className="w-5 h-5 text-gray-400" />
+          ) : isDark ? (
             <Sun className="w-5 h-5 text-yellow-500" />
           ) : (
             <Moon className="w-5 h-5 text-gray-600" />

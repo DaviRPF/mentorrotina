@@ -191,7 +191,7 @@ export function WeekView() {
               key={day.toISOString()}
               className="flex-1 text-center py-2 border-l border-gray-200 dark:border-gray-700 relative group"
             >
-              {/* Day Tracker Button */}
+              {/* Day Tracker Button - visible on mobile, hover on desktop */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -201,7 +201,7 @@ export function WeekView() {
                   'absolute top-1 right-1 p-1 rounded-full transition-all',
                   hasReport
                     ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
-                    : 'opacity-0 group-hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-green-600'
+                    : 'opacity-60 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-gray-100 dark:hover:bg-gray-800 text-gray-400 hover:text-green-600 active:text-green-600'
                 )}
                 title={hasReport ? 'Ver relatório do dia' : 'Acompanhar dia'}
               >

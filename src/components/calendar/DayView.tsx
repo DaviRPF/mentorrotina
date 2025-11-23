@@ -11,7 +11,9 @@ import {
   endOfDay,
 } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Flag } from 'lucide-react';
 import { useCalendarStore } from '@/store/calendar-store';
+import { useDayTrackerStore } from '@/store/day-tracker-store';
 import { EventBlock } from './EventBlock';
 import { cn } from '@/lib/utils';
 
@@ -32,7 +34,16 @@ export function DayView() {
     setIsEventModalOpen,
   } = useCalendarStore();
 
+  const { openTracker, sessions } = useDayTrackerStore();
+
   const today = new Date();
+
+  // Check if day has a completed session
+  const daySession = sessions.find(s => {
+    const sessionDate = new Date(s.date);
+    return isSameDay(sessionDate, currentDate);
+  });
+  const hasReport = daySession?.status === 'completed';
   const dayStart = startOfDay(currentDate);
   const dayEnd = endOfDay(currentDate);
   const visibleEvents = getEventsForDateRange(dayStart, dayEnd);
@@ -132,7 +143,7 @@ export function DayView() {
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
+      <div className="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 relative">
         <div className="w-[40px] sm:w-[60px] flex-shrink-0" />
         <div className="flex-1 text-center py-2 sm:py-4">
           <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 uppercase">
@@ -149,6 +160,19 @@ export function DayView() {
             {format(currentDate, 'd')}
           </div>
         </div>
+        {/* Day Tracker Button */}
+        <button
+          onClick={() => openTracker(currentDate)}
+          className={cn(
+            'absolute top-2 right-2 sm:top-3 sm:right-3 p-1.5 sm:p-2 rounded-full transition-all',
+            hasReport
+              ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400'
+              : 'bg-gray-100 dark:bg-gray-800 text-gray-400 hover:text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
+          )}
+          title={hasReport ? 'Ver relatório do dia' : 'Acompanhar dia'}
+        >
+          <Flag className="w-4 h-4 sm:w-5 sm:h-5" />
+        </button>
       </div>
 
       {/* All day events */}

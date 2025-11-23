@@ -197,7 +197,7 @@ export function EventBlock({ event, hourHeight }: EventBlockProps) {
     <div
       ref={containerRef}
       className={cn(
-        'event-block absolute left-1 right-1 rounded px-2 py-1 cursor-pointer overflow-hidden',
+        'event-block absolute left-0.5 right-0.5 sm:left-1 sm:right-1 rounded px-1 sm:px-2 py-0.5 sm:py-1 cursor-pointer overflow-hidden',
         'hover:shadow-lg transition-shadow',
         (isResizing || isDragging) && 'opacity-75 shadow-lg z-30'
       )}
@@ -216,16 +216,16 @@ export function EventBlock({ event, hourHeight }: EventBlockProps) {
         onMouseDown={(e) => handleResizeStart(e, 'top')}
       />
 
-      {/* Content */}
-      <div className={cn('text-white text-xs', isShort && 'flex items-center gap-1')}>
+      {/* Content - smaller on mobile */}
+      <div className={cn('text-white text-[9px] sm:text-xs leading-tight', isShort && 'flex items-center gap-0.5 sm:gap-1')}>
         <div className="font-medium truncate">{event.title}</div>
         {!isShort && (
-          <div className="text-white/80">
+          <div className="text-white/80 text-[8px] sm:text-xs">
             {format(startTime, 'HH:mm')} - {format(endTime, 'HH:mm')}
           </div>
         )}
         {isShort && (
-          <span className="text-white/80">{format(startTime, 'HH:mm')}</span>
+          <span className="text-white/80 text-[8px] sm:text-xs">{format(startTime, 'HH:mm')}</span>
         )}
       </div>
 
