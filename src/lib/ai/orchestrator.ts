@@ -73,17 +73,14 @@ export interface ChatResponse {
 
 const FAST_CONFIG: GeminiConfig = {
   temperature: 0.1,
-  maxOutputTokens: 1024,
 };
 
 const NORMAL_CONFIG: GeminiConfig = {
   temperature: 0.3,
-  maxOutputTokens: 8192,
 };
 
 const LARGE_CONFIG: GeminiConfig = {
   temperature: 0.3,
-  maxOutputTokens: 32768,
 };
 
 // ============================================================================

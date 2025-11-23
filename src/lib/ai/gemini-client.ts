@@ -25,7 +25,6 @@ const DEFAULT_CONFIG: GeminiConfig = {
   temperature: 0.3,
   topK: 40,
   topP: 0.95,
-  maxOutputTokens: 8192,
 };
 
 const SAFETY_SETTINGS = [
