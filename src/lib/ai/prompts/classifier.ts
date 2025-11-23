@@ -20,8 +20,8 @@ export interface ClassificationResult {
 export const CLASSIFIER_PROMPT = `Classifique a intenção do usuário em UMA das categorias:
 
 CATEGORIAS:
-1. criar_rotina - Usuário PEDE para criar eventos/rotina/agendar algo
-   Exemplos: "monta minha rotina", "agenda meu treino", "cria eventos para", "planeja minha semana"
+1. criar_rotina - Usuário PEDE para criar/montar/terminar eventos/rotina/agendar algo
+   Exemplos: "monta minha rotina", "agenda meu treino", "cria eventos para", "planeja minha semana", "termina minha rotina", "completa minha rotina de amanhã", "consegue terminar minha rotina?"
 
 2. modificar_evento - Usuário quer ALTERAR/DELETAR evento existente
    Exemplos: "muda o horário", "cancela a reunião", "move o treino para", "ajusta o horário", "apaga os treinos", "deleta os eventos", "remove da agenda", "exclui"
@@ -37,12 +37,13 @@ CATEGORIAS:
 
 REGRAS:
 - "Quero que você planeje" = criar_rotina
+- "Consegue terminar/completar minha rotina?" = criar_rotina
 - "Como você faria?" = pergunta_simples (NÃO criar_rotina)
 - "O que você sugere?" = pergunta_simples (NÃO criar_rotina)
-- Se menciona "criar", "montar", "agendar", "planejar" como PEDIDO = criar_rotina
+- Se menciona "criar", "montar", "agendar", "planejar", "terminar rotina", "completar rotina" como PEDIDO = criar_rotina
 - Se é uma PERGUNTA sobre o que fazer = pergunta_simples
 
-Responda APENAS com JSON:
+Responda APENAS com JSON (sem markdown, sem código):
 {"intent":"<categoria>","confidence":<0-1>,"needsActions":<true/false>,"summary":"<resumo em 5 palavras>"}`;
 
 /**

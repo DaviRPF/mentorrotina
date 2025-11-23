@@ -71,6 +71,14 @@ export async function callGemini(
   }
 
   const data = await response.json();
+
+  // Debug logging
+  console.log('=== GEMINI RAW RESPONSE ===');
+  console.log('Candidates:', JSON.stringify(data.candidates, null, 2));
+  if (!data.candidates?.[0]?.content?.parts?.[0]?.text) {
+    console.log('WARNING: No text in response. Full data:', JSON.stringify(data, null, 2));
+  }
+
   const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
   return { text, raw: data };
