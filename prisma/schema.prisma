@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -21,125 +18,80 @@ model Calendar {
 }
 
 model Event {
-  id          String    @id @default(uuid())
-  title       String
-  description String?
-  startTime   DateTime
-  endTime     DateTime
-  color       String    @default("#3b82f6")
-  isAllDay    Boolean   @default(false)
-
-  // Calendar reference
-  calendarId  String
-  calendar    Calendar  @relation(fields: [calendarId], references: [id], onDelete: Cascade)
-
-  // Recurrence
-  recurrenceRule String?   // RRULE format or JSON string
+  id                String    @id @default(uuid())
+  title             String
+  description       String?
+  startTime         DateTime
+  endTime           DateTime
+  color             String    @default("#3b82f6")
+  isAllDay          Boolean   @default(false)
+  calendarId        String
+  recurrenceRule    String?
   recurrenceEndDate DateTime?
-
-  // For recurring event instances
-  parentEventId String?
-  parentEvent   Event?    @relation("RecurringEvents", fields: [parentEventId], references: [id], onDelete: Cascade)
-  instances     Event[]   @relation("RecurringEvents")
-
-  // Exception dates (dates to skip in recurrence)
-  exceptionDates String?  // JSON array of dates
-
-  // Reminder
-  reminderMinutes Int?    // Minutes before event to remind
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  parentEventId     String?
+  exceptionDates    String?
+  reminderMinutes   Int?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+  parentEvent       Event?    @relation("RecurringEvents", fields: [parentEventId], references: [id], onDelete: Cascade)
+  instances         Event[]   @relation("RecurringEvents")
+  calendar          Calendar  @relation(fields: [calendarId], references: [id], onDelete: Cascade)
 }
 
-// Chat conversations
 model Conversation {
-  id          String       @id @default(uuid())
-  title       String       @default("Nova conversa")
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
-  messages    Message[]
-  daySession  DaySession[]  // Relação com sessões de acompanhamento
+  id         String       @id @default(uuid())
+  title      String       @default("Nova conversa")
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+  daySession DaySession[]
+  messages   Message[]
 }
 
 model Message {
   id             String       @id @default(uuid())
-  role           String       // 'user' or 'assistant'
+  role           String
   content        String
   conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-
-  // Pending actions stored as JSON
-  pendingActions String?      // JSON array of actions
-
+  pendingActions String?
   createdAt      DateTime     @default(now())
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 }
 
-// User settings (stored in DB instead of localStorage)
 model UserSettings {
   id                  String   @id @default("default")
-  personalContext     String   @default("") // Immutable personal context
+  personalContext     String   @default("")
   generalOrientations String   @default("")
-  bookSummaries       String   @default("[]") // JSON array
-  timeContexts        String   @default("{}") // JSON object
+  bookSummaries       String   @default("[]")
+  timeContexts        String   @default("{}")
   updatedAt           DateTime @updatedAt
 }
 
-// Day Tracker - Sessão de acompanhamento do dia
 model DaySession {
-  id             String       @id @default(uuid())
-  date           DateTime     // Qual dia está sendo acompanhado
-  status         String       @default("active") // 'active' | 'completed'
-
-  // Conversa do acompanhamento
+  id             String        @id @default(uuid())
+  date           DateTime
+  status         String        @default("active")
   conversationId String?
-  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
-
-  // Relatório gerado
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
   report         DayReport?
-
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  conversation   Conversation? @relation(fields: [conversationId], references: [id])
 }
 
-// Relatório do dia
 model DayReport {
-  id             String     @id @default(uuid())
-  daySessionId   String     @unique
-  daySession     DaySession @relation(fields: [daySessionId], references: [id], onDelete: Cascade)
-
-  // Conteúdo do relatório
-  summary        String     // Resumo geral do dia
-  completedTasks String     @default("[]") // JSON array - o que foi feito
-  skippedTasks   String     @default("[]") // JSON array - o que pulou
-  highlights     String     @default("[]") // JSON array - momentos positivos
-  challenges     String     @default("[]") // JSON array - dificuldades
-  insights       String     @default("[]") // JSON array - aprendizados/insights
-
-  // Métricas
-  plannedEvents    Int      @default(0)
-  completedEvents  Int      @default(0)
-  completionRate   Float    @default(0) // 0-100
-  energyLevel      Int?     // 1-5 auto-avaliação
-  moodRating       Int?     // 1-5 auto-avaliação
-
-  createdAt      DateTime   @default(now())
-  updatedAt      DateTime   @updatedAt
-}
-
-// Quick Todos - Tarefas rápidas com deadline
-model Todo {
-  id               String    @id @default(uuid())
-  content          String    // O que precisa fazer
-  rawDeadline      String?   // Texto original do deadline (ex: "até sexta 18h")
-  deadline         DateTime? // Deadline parseado
-  priority         String    @default("medium") // urgent, high, medium, low
-  estimatedMinutes Int?      // Tempo estimado em minutos
-  status           String    @default("pending") // pending, scheduled, completed, cancelled
-
-  // Vínculo com evento agendado
-  scheduledEventId String?
-
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  id              String     @id @default(uuid())
+  daySessionId    String     @unique
+  summary         String
+  completedTasks  String     @default("[]")
+  skippedTasks    String     @default("[]")
+  highlights      String     @default("[]")
+  challenges      String     @default("[]")
+  insights        String     @default("[]")
+  plannedEvents   Int        @default(0)
+  completedEvents Int        @default(0)
+  completionRate  Float      @default(0)
+  energyLevel     Int?
+  moodRating      Int?
+  createdAt       DateTime   @default(now())
+  updatedAt       DateTime   @updatedAt
+  daySession      DaySession @relation(fields: [daySessionId], references: [id], onDelete: Cascade)
 }

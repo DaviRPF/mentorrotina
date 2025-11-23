@@ -127,7 +127,7 @@ async function getCalendarContext(): Promise<CalendarContext> {
 
   for (const [dateKey, dateEvents] of eventsByDate) {
     const formatted = {
-      date: format(new Date(dateKey), "EEEE, d/MM", { locale: ptBR }),
+      date: format(new Date(dateKey), "EEEE, d 'de' MMMM (dd/MM/yyyy)", { locale: ptBR }),
       events: dateEvents.map(e => ({
         title: e.title,
         startTime: format(e.startTime, 'HH:mm'),
@@ -144,7 +144,7 @@ async function getCalendarContext(): Promise<CalendarContext> {
 
   // Parse reports
   const reports = dayReports.map(r => ({
-    date: format(r.daySession.date, "EEEE, d/MM", { locale: ptBR }),
+    date: format(r.daySession.date, "EEEE, d 'de' MMMM (dd/MM/yyyy)", { locale: ptBR }),
     summary: r.summary,
     completedTasks: JSON.parse(r.completedTasks || '[]'),
     skippedTasks: JSON.parse(r.skippedTasks || '[]'),
