@@ -338,13 +338,13 @@ async function processDayTracker(
   },
   model: string
 ): Promise<ChatResponse> {
-  // Formata contexto de histórico
+  // Formata TODO o contexto
   const historyText = formatHistoryContext(context);
-
-  // Formata todos
   const todosText = formatTodosContext(context);
+  const booksText = formatBooksContext(context);
+  const goalsText = formatGoalsContext(context);
 
-  // Constrói o prompt do day tracker
+  // Constrói o prompt do day tracker com TODO o contexto
   const prompt = buildDayTrackerPrompt(
     dayTrackerContext.date || context.today,
     context.currentTime,
@@ -352,7 +352,9 @@ async function processDayTracker(
     dayTrackerContext.memories || formatMemoriesContext(context),
     dayTrackerContext.orientations || formatOrientationsContext(context),
     todosText,
-    historyText
+    historyText,
+    booksText,
+    goalsText
   );
 
   const response = await callGeminiWithHistory(prompt, history, message, images, NORMAL_CONFIG, model);
