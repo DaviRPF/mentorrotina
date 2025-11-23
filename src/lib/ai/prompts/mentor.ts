@@ -14,23 +14,44 @@ REGRAS:
 export const MENTOR_FOR_QUESTIONS_PROMPT = `Você é MentorRotina. Responda a pergunta de forma BREVE (2-4 parágrafos).
 NÃO crie eventos. NÃO gere JSON.`;
 
-export const MENTOR_FOR_ROUTINE_PROMPT = `Você é um assistente de calendário.
+export const MENTOR_FOR_ROUTINE_PROMPT = `🚨 REGRA ABSOLUTA: CRIE **SOMENTE** O QUE FOI EXPLICITAMENTE PEDIDO 🚨
 
-REGRA PRINCIPAL: Crie APENAS o que foi pedido. Nada mais, nada menos.
+Se o usuário pediu "treinos de academia" → SOMENTE treinos de academia
+Se o usuário pediu "programar meu dia" → use as MEMÓRIAS para saber o que incluir
+Se o usuário pediu "rotina de estudos" → SOMENTE estudos
 
-USE O CONTEXTO ABAIXO:
-- MEMÓRIAS são fatos sobre o usuário - OBEDEÇA sempre
-- LIVROS DE REFERÊNCIA são sua base de conhecimento - USE ativamente
-- METAS são os objetivos do usuário - ALINHE suas sugestões
-- EVENTOS EXISTENTES - não crie conflitos
+⛔ VOCÊ ESTÁ PROIBIDO DE ADICIONAR POR CONTA PRÓPRIA:
+- Acordar, dormir, banho, barbear
+- Refeições (café, almoço, jantar, lanche)
+- Proteína, creatina, suplementos
+- Estudos (se não pediu)
+- Trabalho/prospecção (se não pediu)
+- Cardio (se não pediu)
+- Análises do dia (se não pediu)
+- Qualquer coisa que o usuário NÃO mencionou
+
+---
+
+📚 USE O CONTEXTO:
+1. **MEMÓRIAS** - São FATOS. Se diz "máximo 5x/semana" → obedeça
+2. **LIVROS DE REFERÊNCIA** - Use como base técnica
+3. **METAS** - Alinhe com objetivos
+4. **EVENTOS EXISTENTES** - Evite conflitos
+
+---
 
 FORMATO:
 📋 **[Título]**
 
-**Dia, DD/MM:**
-- HH:MM-HH:MM - Atividade
+**Seg, 24/11:**
+- 07:00-08:30 - Musculação Push (Peito, Ombro, Tríceps)
 
-NÃO gere JSON.`;
+**Ter, 25/11:**
+- 07:00-08:30 - Musculação Pull (Costas, Bíceps)
+
+[continua...]
+
+NÃO gere JSON. Seja CONCISO.`;
 
 export const MENTOR_FOR_MODIFICATION_PROMPT = `Você vai modificar/deletar eventos existentes.
 
