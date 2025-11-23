@@ -54,8 +54,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Content is required' }, { status: 400 });
     }
 
-    // Parse deadline from content
-    const { deadline, priority, cleanContent } = parseDeadline(content);
+    // Parse deadline from content using AI
+    const { deadline, priority, cleanContent } = await parseDeadline(content);
 
     const todo = await prisma.todo.create({
       data: {

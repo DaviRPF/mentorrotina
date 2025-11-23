@@ -1,10 +1,8 @@
 import {
   addDays,
   addWeeks,
-  addMonths,
   setHours,
   setMinutes,
-  startOfDay,
   endOfDay,
   nextMonday,
   nextTuesday,
@@ -13,9 +11,8 @@ import {
   nextFriday,
   nextSaturday,
   nextSunday,
-  isAfter,
-  isBefore,
 } from 'date-fns';
+import { callGeminiSimple } from './ai/gemini-client';
 
 interface ParsedDeadline {
   deadline: Date | null;
@@ -23,155 +20,147 @@ interface ParsedDeadline {
   cleanContent: string;
 }
 
-// Patterns for deadline extraction
-const deadlinePatterns = [
-  // "até sexta 18h" or "até sexta às 18:00"
-  /até\s+(segunda|terça|quarta|quinta|sexta|sábado|domingo)(?:\s+(?:às?\s*)?(\d{1,2})(?::(\d{2}))?(?:h|hrs?)?)?/i,
-  // "até amanhã 14h"
-  /até\s+amanhã(?:\s+(?:às?\s*)?(\d{1,2})(?::(\d{2}))?(?:h|hrs?)?)?/i,
-  // "até hoje 23h"
-  /até\s+hoje(?:\s+(?:às?\s*)?(\d{1,2})(?::(\d{2}))?(?:h|hrs?)?)?/i,
-  // "até dia 25" or "até 25/12"
-  /até\s+(?:dia\s+)?(\d{1,2})(?:\/(\d{1,2}))?(?:\s+(?:às?\s*)?(\d{1,2})(?::(\d{2}))?(?:h|hrs?)?)?/i,
-  // "essa semana"
-  /essa\s+semana/i,
-  // "semana que vem"
-  /semana\s+que\s+vem/i,
-  // "esse mês" or "este mês"
-  /ess?[ea]\s+mês/i,
-  // "urgente" or "agora"
-  /\b(urgente|agora|imediato)\b/i,
-];
+const DEADLINE_PARSER_PROMPT = `Analise o texto e extraia informações de prazo/deadline.
+
+HOJE: {{TODAY}}
+HORA ATUAL: {{CURRENT_TIME}}
+
+Responda APENAS com JSON:
+{
+  "hasDeadline": true/false,
+  "deadlineType": "hoje" | "amanha" | "dia_semana" | "data_especifica" | "essa_semana" | "semana_que_vem" | "esse_mes" | "urgente" | null,
+  "dayOfWeek": "segunda" | "terca" | "quarta" | "quinta" | "sexta" | "sabado" | "domingo" | null,
+  "day": number | null,
+  "month": number | null,
+  "hour": number | null,
+  "minute": number | null,
+  "isUrgent": true/false,
+  "cleanContent": "texto sem a parte do prazo"
+}
+
+Exemplos:
+- "comprar leite até amanhã 14h" → {"hasDeadline":true,"deadlineType":"amanha","hour":14,"minute":0,"cleanContent":"comprar leite"}
+- "reunião urgente" → {"hasDeadline":true,"deadlineType":"urgente","isUrgent":true,"cleanContent":"reunião"}
+- "estudar até sexta" → {"hasDeadline":true,"deadlineType":"dia_semana","dayOfWeek":"sexta","hour":23,"minute":59,"cleanContent":"estudar"}
+- "entregar até dia 25" → {"hasDeadline":true,"deadlineType":"data_especifica","day":25,"hour":23,"minute":59,"cleanContent":"entregar"}
+- "fazer exercício" → {"hasDeadline":false,"cleanContent":"fazer exercício"}`;
 
 const dayNameToNext: Record<string, (date: Date) => Date> = {
   'segunda': nextMonday,
-  'terça': nextTuesday,
+  'terca': nextTuesday,
   'quarta': nextWednesday,
   'quinta': nextThursday,
   'sexta': nextFriday,
-  'sábado': nextSaturday,
   'sabado': nextSaturday,
   'domingo': nextSunday,
 };
 
-export function parseDeadline(text: string): ParsedDeadline {
+export async function parseDeadline(text: string): Promise<ParsedDeadline> {
   const now = new Date();
-  let deadline: Date | null = null;
-  let priority: 'urgent' | 'high' | 'medium' | 'low' = 'medium';
-  let cleanContent = text;
 
-  // Check for urgent keywords
-  if (/\b(urgente|agora|imediato)\b/i.test(text)) {
-    deadline = endOfDay(now);
-    priority = 'urgent';
-    cleanContent = text.replace(/\b(urgente|agora|imediato)\b/i, '').trim();
-    return { deadline, priority, cleanContent };
-  }
+  // Build prompt with current date/time context
+  const prompt = DEADLINE_PARSER_PROMPT
+    .replace('{{TODAY}}', now.toLocaleDateString('pt-BR'))
+    .replace('{{CURRENT_TIME}}', now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
 
-  // "até hoje"
-  const hojeMatch = text.match(/até\s+hoje(?:\s+(?:às?\s*)?(\d{1,2})(?::(\d{2}))?(?:h|hrs?)?)?/i);
-  if (hojeMatch) {
-    const hour = hojeMatch[1] ? parseInt(hojeMatch[1]) : 23;
-    const minute = hojeMatch[2] ? parseInt(hojeMatch[2]) : 59;
-    deadline = setMinutes(setHours(now, hour), minute);
-    priority = 'urgent';
-    cleanContent = text.replace(hojeMatch[0], '').trim();
-    return { deadline, priority, cleanContent };
-  }
+  try {
+    const response = await callGeminiSimple(
+      `${prompt}\n\nTEXTO: "${text}"`,
+      { temperature: 0.1, maxOutputTokens: 256 },
+      'gemini-2.5-flash'
+    );
 
-  // "até amanhã"
-  const amanhaMatch = text.match(/até\s+amanhã(?:\s+(?:às?\s*)?(\d{1,2})(?::(\d{2}))?(?:h|hrs?)?)?/i);
-  if (amanhaMatch) {
-    const tomorrow = addDays(now, 1);
-    const hour = amanhaMatch[1] ? parseInt(amanhaMatch[1]) : 23;
-    const minute = amanhaMatch[2] ? parseInt(amanhaMatch[2]) : 59;
-    deadline = setMinutes(setHours(tomorrow, hour), minute);
-    priority = 'high';
-    cleanContent = text.replace(amanhaMatch[0], '').trim();
-    return { deadline, priority, cleanContent };
-  }
-
-  // "até [dia da semana]"
-  const dayMatch = text.match(/até\s+(segunda|terça|quarta|quinta|sexta|sábado|sabado|domingo)(?:\s+(?:às?\s*)?(\d{1,2})(?::(\d{2}))?(?:h|hrs?)?)?/i);
-  if (dayMatch) {
-    const dayName = dayMatch[1].toLowerCase();
-    const nextDayFn = dayNameToNext[dayName];
-    if (nextDayFn) {
-      let targetDay = nextDayFn(now);
-      // If it's the same day, get next week
-      if (targetDay.getDay() === now.getDay() && isAfter(now, startOfDay(targetDay))) {
-        targetDay = addWeeks(targetDay, 1);
-      }
-      const hour = dayMatch[2] ? parseInt(dayMatch[2]) : 23;
-      const minute = dayMatch[3] ? parseInt(dayMatch[3]) : 59;
-      deadline = setMinutes(setHours(targetDay, hour), minute);
-
-      // Calculate days until deadline for priority
-      const daysUntil = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-      if (daysUntil <= 2) priority = 'high';
-      else if (daysUntil <= 5) priority = 'medium';
-      else priority = 'low';
-
-      cleanContent = text.replace(dayMatch[0], '').trim();
-      return { deadline, priority, cleanContent };
-    }
-  }
-
-  // "até dia X" or "até X/Y"
-  const dateMatch = text.match(/até\s+(?:dia\s+)?(\d{1,2})(?:\/(\d{1,2}))?(?:\s+(?:às?\s*)?(\d{1,2})(?::(\d{2}))?(?:h|hrs?)?)?/i);
-  if (dateMatch) {
-    const day = parseInt(dateMatch[1]);
-    const month = dateMatch[2] ? parseInt(dateMatch[2]) - 1 : now.getMonth();
-    const hour = dateMatch[3] ? parseInt(dateMatch[3]) : 23;
-    const minute = dateMatch[4] ? parseInt(dateMatch[4]) : 59;
-
-    let year = now.getFullYear();
-    let targetDate = new Date(year, month, day, hour, minute);
-
-    // If date is in the past, assume next year
-    if (isBefore(targetDate, now)) {
-      targetDate = new Date(year + 1, month, day, hour, minute);
+    // Parse JSON from response
+    const jsonMatch = response.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      return { deadline: null, priority: 'medium', cleanContent: text.trim() };
     }
 
-    deadline = targetDate;
-    const daysUntil = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-    if (daysUntil <= 1) priority = 'urgent';
-    else if (daysUntil <= 3) priority = 'high';
-    else if (daysUntil <= 7) priority = 'medium';
-    else priority = 'low';
+    const parsed = JSON.parse(jsonMatch[0]);
 
-    cleanContent = text.replace(dateMatch[0], '').trim();
-    return { deadline, priority, cleanContent };
+    if (!parsed.hasDeadline) {
+      return { deadline: null, priority: 'medium', cleanContent: parsed.cleanContent || text.trim() };
+    }
+
+    let deadline: Date | null = null;
+    let priority: 'urgent' | 'high' | 'medium' | 'low' = 'medium';
+
+    const hour = parsed.hour ?? 23;
+    const minute = parsed.minute ?? 59;
+
+    switch (parsed.deadlineType) {
+      case 'urgente':
+        deadline = endOfDay(now);
+        priority = 'urgent';
+        break;
+
+      case 'hoje':
+        deadline = setMinutes(setHours(now, hour), minute);
+        priority = 'urgent';
+        break;
+
+      case 'amanha':
+        deadline = setMinutes(setHours(addDays(now, 1), hour), minute);
+        priority = 'high';
+        break;
+
+      case 'dia_semana':
+        if (parsed.dayOfWeek && dayNameToNext[parsed.dayOfWeek]) {
+          let targetDay = dayNameToNext[parsed.dayOfWeek](now);
+          deadline = setMinutes(setHours(targetDay, hour), minute);
+
+          const daysUntil = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          if (daysUntil <= 2) priority = 'high';
+          else if (daysUntil <= 5) priority = 'medium';
+          else priority = 'low';
+        }
+        break;
+
+      case 'data_especifica':
+        if (parsed.day) {
+          const month = parsed.month ? parsed.month - 1 : now.getMonth();
+          let year = now.getFullYear();
+          let targetDate = new Date(year, month, parsed.day, hour, minute);
+
+          if (targetDate < now) {
+            targetDate = new Date(year + 1, month, parsed.day, hour, minute);
+          }
+
+          deadline = targetDate;
+          const daysUntil = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          if (daysUntil <= 1) priority = 'urgent';
+          else if (daysUntil <= 3) priority = 'high';
+          else if (daysUntil <= 7) priority = 'medium';
+          else priority = 'low';
+        }
+        break;
+
+      case 'essa_semana':
+        deadline = setMinutes(setHours(nextSunday(now), 23), 59);
+        priority = 'medium';
+        break;
+
+      case 'semana_que_vem':
+        deadline = setMinutes(setHours(addWeeks(nextSunday(now), 1), 23), 59);
+        priority = 'low';
+        break;
+
+      case 'esse_mes':
+        deadline = endOfDay(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+        priority = 'low';
+        break;
+    }
+
+    return {
+      deadline,
+      priority: parsed.isUrgent ? 'urgent' : priority,
+      cleanContent: parsed.cleanContent || text.trim(),
+    };
+
+  } catch (error) {
+    console.error('Error parsing deadline with AI:', error);
+    return { deadline: null, priority: 'medium', cleanContent: text.trim() };
   }
-
-  // "essa semana"
-  if (/essa\s+semana/i.test(text)) {
-    deadline = nextSunday(now);
-    deadline = setMinutes(setHours(deadline, 23), 59);
-    priority = 'medium';
-    cleanContent = text.replace(/essa\s+semana/i, '').trim();
-    return { deadline, priority, cleanContent };
-  }
-
-  // "semana que vem"
-  if (/semana\s+que\s+vem/i.test(text)) {
-    deadline = addWeeks(nextSunday(now), 1);
-    deadline = setMinutes(setHours(deadline, 23), 59);
-    priority = 'low';
-    cleanContent = text.replace(/semana\s+que\s+vem/i, '').trim();
-    return { deadline, priority, cleanContent };
-  }
-
-  // "esse mês"
-  if (/ess?[ea]\s+mês/i.test(text)) {
-    deadline = endOfDay(new Date(now.getFullYear(), now.getMonth() + 1, 0));
-    priority = 'low';
-    cleanContent = text.replace(/ess?[ea]\s+mês/i, '').trim();
-    return { deadline, priority, cleanContent };
-  }
-
-  // No deadline found - return as is
-  return { deadline: null, priority: 'medium', cleanContent: text.trim() };
 }
 
 // Calculate priority based on deadline
