@@ -118,22 +118,48 @@ async function generateMentorResponse(
 ): Promise<string> {
   // Seleciona o prompt base do mentor baseado na intenção
   let mentorPrompt: string;
+  let fullPrompt: string;
+
   switch (intent) {
     case 'criar_rotina':
+      // Para criar rotina: contexto MÍNIMO para não confundir a IA
       mentorPrompt = MENTOR_FOR_ROUTINE_PROMPT;
+      fullPrompt = `${mentorPrompt}
+
+=== CONTEXTO MÍNIMO ===
+${formatTemporalContext(context)}
+
+${formatCalendarsContext(context)}
+
+${formatEventsContext(context)}
+
+IMPORTANTE: Crie SOMENTE o que o usuário pediu. Nada mais.`;
       break;
+
     case 'modificar_evento':
       mentorPrompt = MENTOR_FOR_MODIFICATION_PROMPT;
+      fullPrompt = `${mentorPrompt}
+
+=== CONTEXTO ===
+${formatTemporalContext(context)}
+${formatCalendarsContext(context)}
+${formatEventsContext(context)}`;
       break;
+
     case 'pergunta_simples':
       mentorPrompt = MENTOR_FOR_QUESTIONS_PROMPT;
-      break;
-    default:
-      mentorPrompt = MENTOR_PERSONA_PROMPT;
-  }
+      fullPrompt = `${mentorPrompt}
 
-  // Constrói o contexto completo
-  const fullPrompt = `${mentorPrompt}
+=== CONTEXTO ===
+${formatTemporalContext(context)}
+${formatMemoriesContext(context)}
+${formatBooksContext(context)}`;
+      break;
+
+    default:
+      // Conversa geral: contexto completo
+      mentorPrompt = MENTOR_PERSONA_PROMPT;
+      fullPrompt = `${mentorPrompt}
 
 === CONTEXTO DO SISTEMA ===
 ${formatTemporalContext(context)}
@@ -153,6 +179,7 @@ ${formatBooksContext(context)}
 ${formatGoalsContext(context)}
 
 ${formatHistoryContext(context)}`;
+  }
 
   // Escolhe config baseada na intenção
   const config = intent === 'criar_rotina' ? LARGE_CONFIG : NORMAL_CONFIG;
@@ -231,8 +258,10 @@ export async function processChat(request: ChatRequest): Promise<ChatResponse> {
   }
 
   // 1. Classifica a intenção do usuário
+  console.log('=== ORCHESTRATOR: Processando mensagem ===');
+  console.log('Mensagem:', message.substring(0, 100));
   const classification = await classifyIntent(message, model);
-  console.log('Classification:', classification);
+  console.log('Classification:', JSON.stringify(classification));
 
   // 2. Gera resposta do mentor
   const mentorResponse = await generateMentorResponse(
