@@ -35,14 +35,17 @@ interface CalendarContext {
   // Extended history for AI context
   pastEvents: {
     date: string;
-    events: { title: string; startTime: string; endTime: string }[];
+    dateKey: string;
+    events: { title: string; date: string; startTime: string; endTime: string }[];
   }[];
   futureEvents: {
     date: string;
-    events: { title: string; startTime: string; endTime: string }[];
+    dateKey: string;
+    events: { title: string; date: string; startTime: string; endTime: string }[];
   }[];
   reports: {
     date: string;
+    dateKey: string;
     summary: string;
     completedTasks: string[];
     skippedTasks: string[];
@@ -126,10 +129,17 @@ async function getCalendarContext(): Promise<CalendarContext> {
   const todayKey = format(now, 'yyyy-MM-dd');
 
   for (const [dateKey, dateEvents] of eventsByDate) {
+    // IMPORTANT: Use the original event's startTime for date formatting
+    // to avoid timezone issues when parsing dateKey string back to Date
+    const referenceDate = dateEvents[0].startTime;
+
     const formatted = {
-      date: format(new Date(dateKey), "EEEE, d 'de' MMMM (dd/MM/yyyy)", { locale: ptBR }),
+      date: format(referenceDate, "EEEE, d 'de' MMMM (dd/MM/yyyy)", { locale: ptBR }),
+      dateKey: dateKey, // Include ISO date key for AI reference
       events: dateEvents.map(e => ({
         title: e.title,
+        // Include full date in each event for clarity
+        date: format(e.startTime, 'dd/MM/yyyy'),
         startTime: format(e.startTime, 'HH:mm'),
         endTime: format(e.endTime, 'HH:mm'),
       })),
@@ -145,6 +155,7 @@ async function getCalendarContext(): Promise<CalendarContext> {
   // Parse reports
   const reports = dayReports.map(r => ({
     date: format(r.daySession.date, "EEEE, d 'de' MMMM (dd/MM/yyyy)", { locale: ptBR }),
+    dateKey: format(r.daySession.date, 'yyyy-MM-dd'),
     summary: r.summary,
     completedTasks: JSON.parse(r.completedTasks || '[]'),
     skippedTasks: JSON.parse(r.skippedTasks || '[]'),
@@ -474,8 +485,8 @@ ${ctx.content}
       historicalContext += `
 📅 EVENTOS DOS ÚLTIMOS DIAS (o que estava planejado):
 ${context.pastEvents.map(day => `
-${day.date}:
-${day.events.map(e => `  - ${e.title} (${e.startTime}-${e.endTime})`).join('\n')}`).join('\n')}
+=== ${day.date} [${day.dateKey}] ===
+${day.events.map(e => `  - [${e.date}] ${e.title} (${e.startTime}-${e.endTime})`).join('\n')}`).join('\n')}
 `;
     }
 
@@ -483,7 +494,7 @@ ${day.events.map(e => `  - ${e.title} (${e.startTime}-${e.endTime})`).join('\n')
       historicalContext += `
 📊 RELATÓRIOS DE ACOMPANHAMENTO (o que realmente aconteceu):
 ${context.reports.map(r => `
-${r.date} (${r.completionRate.toFixed(0)}% concluído):
+=== ${r.date} [${r.dateKey}] === (${r.completionRate.toFixed(0)}% concluído)
   Resumo: ${r.summary}
   ✓ Feito: ${r.completedTasks.length > 0 ? r.completedTasks.join(', ') : 'nada registrado'}
   ✗ Não feito: ${r.skippedTasks.length > 0 ? r.skippedTasks.join(', ') : 'nada registrado'}
@@ -495,8 +506,8 @@ ${r.date} (${r.completionRate.toFixed(0)}% concluído):
       historicalContext += `
 📆 PRÓXIMOS DIAS (o que está planejado):
 ${context.futureEvents.map(day => `
-${day.date}:
-${day.events.map(e => `  - ${e.title} (${e.startTime}-${e.endTime})`).join('\n')}`).join('\n')}
+=== ${day.date} [${day.dateKey}] ===
+${day.events.map(e => `  - [${e.date}] ${e.title} (${e.startTime}-${e.endTime})`).join('\n')}`).join('\n')}
 `;
     }
 
@@ -565,8 +576,8 @@ ${mentorContext}`;
         dayTrackerHistoryContext += `
 📅 EVENTOS DOS ÚLTIMOS DIAS (o que estava planejado):
 ${context.pastEvents.map(day => `
-${day.date}:
-${day.events.map(e => `  - ${e.title} (${e.startTime}-${e.endTime})`).join('\n')}`).join('\n')}
+=== ${day.date} [${day.dateKey}] ===
+${day.events.map(e => `  - [${e.date}] ${e.title} (${e.startTime}-${e.endTime})`).join('\n')}`).join('\n')}
 `;
       }
 
@@ -574,7 +585,7 @@ ${day.events.map(e => `  - ${e.title} (${e.startTime}-${e.endTime})`).join('\n')
         dayTrackerHistoryContext += `
 📊 RELATÓRIOS DE ACOMPANHAMENTO (o que realmente aconteceu):
 ${context.reports.map(r => `
-${r.date} (${r.completionRate.toFixed(0)}% concluído):
+=== ${r.date} [${r.dateKey}] === (${r.completionRate.toFixed(0)}% concluído)
   Resumo: ${r.summary}
   ✓ Feito: ${r.completedTasks.length > 0 ? r.completedTasks.join(', ') : 'nada registrado'}
   ✗ Não feito: ${r.skippedTasks.length > 0 ? r.skippedTasks.join(', ') : 'nada registrado'}
@@ -586,8 +597,8 @@ ${r.date} (${r.completionRate.toFixed(0)}% concluído):
         dayTrackerHistoryContext += `
 📆 PRÓXIMOS DIAS (o que está planejado):
 ${context.futureEvents.map(day => `
-${day.date}:
-${day.events.map(e => `  - ${e.title} (${e.startTime}-${e.endTime})`).join('\n')}`).join('\n')}
+=== ${day.date} [${day.dateKey}] ===
+${day.events.map(e => `  - [${e.date}] ${e.title} (${e.startTime}-${e.endTime})`).join('\n')}`).join('\n')}
 `;
       }
 
