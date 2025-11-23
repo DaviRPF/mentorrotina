@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, Send, Flag, Loader2, ChevronLeft, FileText, ImageIcon, RefreshCw } from 'lucide-react';
+import { X, Send, Flag, Loader2, ChevronLeft, FileText, ImageIcon, RefreshCw, Sparkles, MessageSquare, Clock, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useDayTrackerStore, Message } from '@/store/day-tracker-store';
@@ -9,6 +9,17 @@ import { useCalendarStore } from '@/store/calendar-store';
 import { useSettingsStore } from '@/store/settings-store';
 import { DayReportView } from './DayReportView';
 import { useImageUpload } from '@/hooks/useImageUpload';
+import { EventEnhancement } from '@/components/event/EventEnhancement';
+import { cn } from '@/lib/utils';
+
+interface DayEvent {
+  id: string;
+  title: string;
+  description: string | null;
+  startTime: Date;
+  endTime: Date;
+  color: string;
+}
 
 export function DayTrackerModal() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -18,6 +29,8 @@ export function DayTrackerModal() {
   const [isLoading, setIsLoading] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeTab, setActiveTab] = useState<'tracking' | 'enhancement'>('tracking');
+  const [selectedEventForEnhancement, setSelectedEventForEnhancement] = useState<DayEvent | null>(null);
 
   // Image upload hook
   const { images, isProcessing, addImage, addImagesFromClipboard, removeImage, clearImages } = useImageUpload(5);
@@ -51,6 +64,15 @@ export function DayTrackerModal() {
     }
   }, [isOpen, selectedDate, currentSession, fetchOrCreateSession]);
 
+  // Reset state when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setActiveTab('tracking');
+      setSelectedEventForEnhancement(null);
+      setShowReport(false);
+    }
+  }, [isOpen]);
+
   // Scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -58,13 +80,13 @@ export function DayTrackerModal() {
 
   // Focus input when opened
   useEffect(() => {
-    if (isOpen && !isSessionLoading) {
+    if (isOpen && !isSessionLoading && activeTab === 'tracking') {
       inputRef.current?.focus();
     }
-  }, [isOpen, isSessionLoading]);
+  }, [isOpen, isSessionLoading, activeTab]);
 
   // Get today's events
-  const getTodayEvents = useCallback(() => {
+  const getTodayEvents = useCallback((): DayEvent[] => {
     if (!selectedDate) return [];
     const dayStart = new Date(selectedDate);
     dayStart.setHours(0, 0, 0, 0);
@@ -74,7 +96,15 @@ export function DayTrackerModal() {
     return events.filter(e => {
       const eventStart = new Date(e.startTime);
       return eventStart >= dayStart && eventStart <= dayEnd;
-    }).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
+    }).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
+      .map(e => ({
+        id: e.id,
+        title: e.title,
+        description: e.description || null,
+        startTime: new Date(e.startTime),
+        endTime: new Date(e.endTime),
+        color: e.color,
+      }));
   }, [selectedDate, events]);
 
   // Handle paste for images
@@ -145,9 +175,7 @@ export function DayTrackerModal() {
       const todayEvents = getTodayEvents();
       const eventsContext = todayEvents.length > 0
         ? todayEvents.map(e => {
-            const start = new Date(e.startTime);
-            const end = new Date(e.endTime);
-            return `- ${e.title} (${format(start, 'HH:mm')} - ${format(end, 'HH:mm')})`;
+            return `- ${e.title} (${format(e.startTime, 'HH:mm')} - ${format(e.endTime, 'HH:mm')})`;
           }).join('\n')
         : 'Nenhum evento planejado';
 
@@ -224,14 +252,12 @@ export function DayTrackerModal() {
 
   const handleRegenerateReport = async () => {
     if (!currentSession) return;
-    const report = await generateReport(currentSession.id);
-    if (report) {
-      // Report is already being shown, just need to refresh the view
-      // The store update will trigger a re-render with the new report
-    }
+    await generateReport(currentSession.id);
   };
 
   if (!isOpen) return null;
+
+  const todayEvents = getTodayEvents();
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-0 sm:p-4">
@@ -239,28 +265,51 @@ export function DayTrackerModal() {
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3">
-            {showReport && (
+            {(showReport || selectedEventForEnhancement) && (
               <button
-                onClick={() => setShowReport(false)}
+                onClick={() => {
+                  if (selectedEventForEnhancement) {
+                    setSelectedEventForEnhancement(null);
+                  } else {
+                    setShowReport(false);
+                  }
+                }}
                 className="p-1 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
             )}
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center">
-              <Flag className="w-5 h-5 text-white" />
+            <div className={cn(
+              "w-10 h-10 rounded-full flex items-center justify-center",
+              activeTab === 'tracking'
+                ? "bg-gradient-to-br from-green-500 to-emerald-600"
+                : "bg-gradient-to-br from-purple-500 to-blue-600"
+            )}>
+              {activeTab === 'tracking' ? (
+                <Flag className="w-5 h-5 text-white" />
+              ) : (
+                <Sparkles className="w-5 h-5 text-white" />
+              )}
             </div>
             <div>
               <h2 className="font-semibold text-gray-900 dark:text-white">
-                {showReport ? 'Relatório do Dia' : 'Acompanhamento'}
+                {showReport
+                  ? 'Relatório do Dia'
+                  : selectedEventForEnhancement
+                    ? selectedEventForEnhancement.title
+                    : activeTab === 'tracking'
+                      ? 'Acompanhamento'
+                      : 'Aperfeiçoamento'}
               </h2>
               <p className="text-sm text-gray-500 dark:text-gray-400">
-                {selectedDate && format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
+                {selectedEventForEnhancement
+                  ? `${format(selectedEventForEnhancement.startTime, 'HH:mm')} - ${format(selectedEventForEnhancement.endTime, 'HH:mm')}`
+                  : selectedDate && format(selectedDate, "EEEE, d 'de' MMMM", { locale: ptBR })}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            {currentSession?.report && !showReport && (
+            {currentSession?.report && !showReport && activeTab === 'tracking' && (
               <button
                 onClick={() => setShowReport(true)}
                 className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg text-gray-500"
@@ -278,11 +327,41 @@ export function DayTrackerModal() {
           </div>
         </div>
 
+        {/* Tabs - only show when not viewing report or specific event enhancement */}
+        {!showReport && !selectedEventForEnhancement && (
+          <div className="flex gap-1 px-4 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+            <button
+              onClick={() => setActiveTab('tracking')}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+                activeTab === 'tracking'
+                  ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+              )}
+            >
+              <MessageSquare className="w-4 h-4" />
+              Acompanhamento
+            </button>
+            <button
+              onClick={() => setActiveTab('enhancement')}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors',
+                activeTab === 'enhancement'
+                  ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-sm'
+                  : 'text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400'
+              )}
+            >
+              <Sparkles className="w-4 h-4" />
+              Aperfeiçoamento
+            </button>
+          </div>
+        )}
+
         {isSessionLoading ? (
           <div className="flex-1 flex items-center justify-center">
             <Loader2 className="w-8 h-8 animate-spin text-green-500" />
           </div>
-        ) : error ? (
+        ) : error && activeTab === 'tracking' ? (
           <div className="flex-1 flex items-center justify-center p-4">
             <div className="text-center">
               <p className="text-red-500 mb-4">{error}</p>
@@ -326,7 +405,65 @@ export function DayTrackerModal() {
               </p>
             </div>
           </>
+        ) : selectedEventForEnhancement ? (
+          /* Event Enhancement View */
+          <div className="flex-1 overflow-hidden">
+            <EventEnhancement
+              eventId={selectedEventForEnhancement.id}
+              eventTitle={selectedEventForEnhancement.title}
+              eventDescription={selectedEventForEnhancement.description}
+              eventStart={selectedEventForEnhancement.startTime}
+              eventEnd={selectedEventForEnhancement.endTime}
+            />
+          </div>
+        ) : activeTab === 'enhancement' ? (
+          /* Events List for Enhancement */
+          <div className="flex-1 overflow-y-auto p-4">
+            {todayEvents.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-full text-center">
+                <Sparkles className="w-12 h-12 text-purple-300 mb-4" />
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+                  Nenhum evento hoje
+                </h3>
+                <p className="text-sm text-gray-600 dark:text-gray-400 max-w-sm">
+                  Não há eventos planejados para este dia. Adicione eventos ao calendário para poder aperfeiçoá-los.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                  Selecione um evento para receber um guia personalizado de como executá-lo da forma mais eficiente.
+                </p>
+                {todayEvents.map((event) => (
+                  <button
+                    key={event.id}
+                    onClick={() => setSelectedEventForEnhancement(event)}
+                    className="w-full flex items-center gap-3 p-3 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:border-purple-300 dark:hover:border-purple-700 hover:shadow-md transition-all group"
+                  >
+                    <div
+                      className="w-1 h-12 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: event.color }}
+                    />
+                    <div className="flex-1 text-left">
+                      <h4 className="font-medium text-gray-900 dark:text-white group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+                        {event.title}
+                      </h4>
+                      <div className="flex items-center gap-1 text-sm text-gray-500 dark:text-gray-400">
+                        <Clock className="w-3.5 h-3.5" />
+                        {format(event.startTime, 'HH:mm')} - {format(event.endTime, 'HH:mm')}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 text-purple-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-sm font-medium">Aperfeiçoar</span>
+                      <ChevronRight className="w-4 h-4" />
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         ) : (
+          /* Tracking Tab - Original Chat */
           <>
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
@@ -352,17 +489,17 @@ export function DayTrackerModal() {
                   <p className="text-sm text-green-700 dark:text-green-300 mb-3">
                     Me conte o que você já fez hoje e eu vou te ajudar a manter o foco nas próximas atividades.
                   </p>
-                  {getTodayEvents().length > 0 && (
+                  {todayEvents.length > 0 && (
                     <div className="text-sm text-green-600 dark:text-green-400">
                       <strong>Atividades planejadas:</strong>
                       <ul className="mt-1 space-y-1">
-                        {getTodayEvents().slice(0, 5).map(e => (
+                        {todayEvents.slice(0, 5).map(e => (
                           <li key={e.id}>
-                            {format(new Date(e.startTime), 'HH:mm')} - {e.title}
+                            {format(e.startTime, 'HH:mm')} - {e.title}
                           </li>
                         ))}
-                        {getTodayEvents().length > 5 && (
-                          <li className="text-green-500">+{getTodayEvents().length - 5} mais...</li>
+                        {todayEvents.length > 5 && (
+                          <li className="text-green-500">+{todayEvents.length - 5} mais...</li>
                         )}
                       </ul>
                     </div>

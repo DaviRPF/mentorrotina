@@ -2,15 +2,13 @@
 
 import { useEffect, useState } from 'react';
 import { format } from 'date-fns';
-import { Trash2, Clock, Calendar, Bell, Repeat, AlignLeft, Sparkles, Edit2 } from 'lucide-react';
+import { Trash2, Clock, Calendar, Bell, Repeat, AlignLeft } from 'lucide-react';
 import { useCalendarStore } from '@/store/calendar-store';
 import { Modal } from '@/components/ui/Modal';
 import { Button } from '@/components/ui/Button';
 import { Input } from '@/components/ui/Input';
-import { Select } from '@/components/ui/Select';
 import { COLORS, REMINDER_OPTIONS, RecurrenceRule } from '@/types';
 import { cn } from '@/lib/utils';
-import { EventEnhancement } from '@/components/event/EventEnhancement';
 
 export function EventModal() {
   const {
@@ -45,7 +43,6 @@ export function EventModal() {
   const [recurrenceEndDate, setRecurrenceEndDate] = useState('');
   const [showDeleteOptions, setShowDeleteOptions] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'edit' | 'enhance'>('edit');
 
   const isEditing = !!selectedEvent;
   const isRecurringInstance = selectedEvent?.parentEventId != null ||
@@ -95,7 +92,6 @@ export function EventModal() {
       } else {
         setRecurrenceType('none');
       }
-    setActiveTab('edit'); // Reset to edit tab when opening existing event
     } else if (newEventStart && newEventEnd) {
       setTitle('');
       setDescription('');
@@ -111,7 +107,6 @@ export function EventModal() {
       setStartTime(format(newEventStart, 'HH:mm'));
       setEndDate(format(newEventEnd, 'yyyy-MM-dd'));
       setEndTime(format(newEventEnd, 'HH:mm'));
-      setActiveTab('edit'); // Reset to edit tab for new events
     }
   }, [selectedEvent, newEventStart, newEventEnd, calendars]);
 
@@ -305,54 +300,9 @@ export function EventModal() {
     <Modal
       isOpen={isEventModalOpen}
       onClose={handleClose}
-      title={isEditing ? (activeTab === 'edit' ? 'Editar evento' : 'Aperfeiçoar tarefa') : 'Novo evento'}
-      className={cn("w-full", activeTab === 'enhance' ? 'max-w-2xl' : 'max-w-lg')}
+      title={isEditing ? 'Editar evento' : 'Novo evento'}
+      className="w-full max-w-lg"
     >
-      {/* Tabs - only show when editing */}
-      {isEditing && (
-        <div className="flex gap-1 mb-4 -mt-2 p-1 bg-gray-100 dark:bg-gray-800 rounded-lg">
-          <button
-            onClick={() => setActiveTab('edit')}
-            className={cn(
-              'flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors',
-              activeTab === 'edit'
-                ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-            )}
-          >
-            <Edit2 className="w-4 h-4" />
-            Editar
-          </button>
-          <button
-            onClick={() => setActiveTab('enhance')}
-            className={cn(
-              'flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-md transition-colors',
-              activeTab === 'enhance'
-                ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-sm'
-                : 'text-gray-600 dark:text-gray-400 hover:text-purple-600 dark:hover:text-purple-400'
-            )}
-          >
-            <Sparkles className="w-4 h-4" />
-            Aperfeiçoar
-          </button>
-        </div>
-      )}
-
-      {/* Enhancement Tab */}
-      {activeTab === 'enhance' && selectedEvent && (
-        <div className="min-h-[400px] -mx-4 sm:-mx-6">
-          <EventEnhancement
-            eventId={selectedEvent.id}
-            eventTitle={selectedEvent.title}
-            eventDescription={selectedEvent.description || null}
-            eventStart={new Date(selectedEvent.startTime)}
-            eventEnd={new Date(selectedEvent.endTime)}
-          />
-        </div>
-      )}
-
-      {/* Edit Tab */}
-      {activeTab === 'edit' && (
       <div className="space-y-3 sm:space-y-4">
         {/* Title */}
         <Input
@@ -592,7 +542,6 @@ export function EventModal() {
           </div>
         </div>
       </div>
-      )}
     </Modal>
   );
 }
