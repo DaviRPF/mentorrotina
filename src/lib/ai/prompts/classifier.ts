@@ -20,33 +20,28 @@ export interface ClassificationResult {
 export const CLASSIFIER_PROMPT = `Classifique a intenção do usuário em UMA das categorias:
 
 CATEGORIAS:
-1. criar_rotina - Usuário PEDE para criar/montar/terminar/programar eventos/rotina/agendar algo
-   Exemplos: "monta minha rotina", "agenda meu treino", "cria eventos para", "planeja minha semana", "termina minha rotina", "completa minha rotina de amanhã", "consegue terminar minha rotina?", "programa meu dia", "programar meu dia de amanhã"
+1. criar_rotina - Usuário PEDE para criar/montar/ajustar rotina ou dá FEEDBACK para refazer
+   Exemplos: "monta minha rotina", "agenda meu treino", "programa meu dia", "não dá pra dormir depois das 22h", "tá muito pesado", "tá solicita", "ajusta isso", "refaz", "muito cedo", "muito tarde"
 
-2. modificar_evento - Usuário quer ALTERAR/DELETAR evento existente
-   Exemplos: "muda o horário", "cancela a reunião", "move o treino para", "ajusta o horário", "apaga os treinos", "deleta os eventos", "remove da agenda", "exclui"
+2. modificar_evento - Usuário quer ALTERAR/DELETAR evento específico já existente no calendário
+   Exemplos: "muda o horário do treino", "cancela a reunião de amanhã", "deleta os eventos", "remove da agenda"
 
-3. pergunta_simples - Pergunta que NÃO requer criar eventos
-   Exemplos: "o que devo fazer?", "como você separaria?", "vale a pena?", "o que você acha?"
+3. pergunta_simples - Pergunta que NÃO requer criar/modificar eventos
+   Exemplos: "o que devo fazer?", "vale a pena?", "o que você acha?"
 
-4. conversa_geral - Conversa normal sem relação com calendário
-   Exemplos: "oi", "obrigado", "entendi", "como funciona X?"
+4. conversa_geral - Conversa casual sem relação com calendário
+   Exemplos: "oi", "obrigado", "entendi"
 
 5. acompanhamento - Usuário reportando o que fez/está fazendo
    Exemplos: "terminei o treino", "acabei de acordar", "tô na academia"
 
-REGRAS:
-- "Quero que você planeje" = criar_rotina
-- "Consegue terminar/completar minha rotina?" = criar_rotina
-- "Consegue programar meu dia?" = criar_rotina
-- "Programa meu dia de amanhã" = criar_rotina
-- "Como você faria?" = pergunta_simples (NÃO criar_rotina)
-- "O que você sugere?" = pergunta_simples (NÃO criar_rotina)
-- Se menciona "criar", "montar", "agendar", "planejar", "programar", "terminar rotina", "completar rotina" como PEDIDO = criar_rotina
-- Se é uma PERGUNTA sobre o que fazer = pergunta_simples
+IMPORTANTE:
+- Se o usuário dá FEEDBACK sobre uma rotina proposta (ex: "não dá", "muito X", "ajusta") = criar_rotina
+- Se pede pra CRIAR/MONTAR/PROGRAMAR algo = criar_rotina
+- Se quer ALTERAR evento ESPECÍFICO já no calendário = modificar_evento
 
-Responda APENAS com JSON (sem markdown, sem código):
-{"intent":"<categoria>","confidence":<0-1>,"needsActions":<true/false>,"summary":"<resumo em 5 palavras>"}`;
+Responda APENAS com JSON:
+{"intent":"<categoria>","confidence":<0-1>,"needsActions":<true/false>,"summary":"<resumo>"}`;
 
 /**
  * Extrai a classificação da resposta da IA
