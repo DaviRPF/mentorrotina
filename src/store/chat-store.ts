@@ -81,6 +81,7 @@ interface ChatStore {
   rejectMemoryAction: (id: string) => void;
   clearPendingMemoryActions: () => void;
   getPendingMemoryActions: () => PendingMemoryAction[];
+  updateMemoryActionType: (id: string, newType: 'create' | 'update') => void;
 }
 
 export const useChatStore = create<ChatStore>((set, get) => ({
@@ -201,5 +202,26 @@ export const useChatStore = create<ChatStore>((set, get) => ({
 
   getPendingMemoryActions: () => {
     return get().pendingMemoryActions.filter((action) => action.status === 'pending');
+  },
+
+  updateMemoryActionType: (id, newType) => {
+    set((state) => ({
+      pendingMemoryActions: state.pendingMemoryActions.map((action) => {
+        if (action.id !== id) return action;
+
+        // When changing from update to create, clear the memoryId and currentContent
+        if (newType === 'create') {
+          return {
+            ...action,
+            type: 'create',
+            memoryId: undefined,
+            currentContent: undefined,
+          };
+        }
+
+        // When changing from create to update (less common), just change the type
+        return { ...action, type: newType };
+      }),
+    }));
   },
 }));

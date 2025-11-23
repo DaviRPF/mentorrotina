@@ -139,6 +139,7 @@ export function ChatSidebar() {
     rejectMemoryAction,
     clearPendingMemoryActions,
     getPendingMemoryActions,
+    updateMemoryActionType,
   } = useChatStore();
 
   // Conversation store for database persistence
@@ -1193,16 +1194,29 @@ export function ChatSidebar() {
                     className="bg-white dark:bg-gray-800 rounded-lg border border-purple-200 dark:border-purple-700 p-3"
                   >
                     <div className="flex items-start gap-2 mb-2">
-                      <span className={cn(
-                        'text-xs font-medium px-2 py-0.5 rounded',
-                        action.type === 'create' && 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400',
-                        action.type === 'update' && 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400',
-                        action.type === 'delete' && 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-                      )}>
-                        {action.type === 'create' && 'Nova'}
-                        {action.type === 'update' && 'Atualizar'}
-                        {action.type === 'delete' && 'Excluir'}
-                      </span>
+                      {/* Type badge - clickable to toggle between update/create */}
+                      {action.type === 'update' || action.type === 'create' ? (
+                        <button
+                          onClick={() => {
+                            updateMemoryActionType(action.id, action.type === 'update' ? 'create' : 'update');
+                          }}
+                          className={cn(
+                            'text-xs font-medium px-2 py-0.5 rounded cursor-pointer hover:ring-2 transition-all',
+                            action.type === 'create' && 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 hover:ring-green-400',
+                            action.type === 'update' && 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 hover:ring-yellow-400',
+                          )}
+                          title={action.type === 'update' ? 'Clique para mudar para "Nova" (criar separado)' : 'Clique para mudar para "Atualizar"'}
+                        >
+                          {action.type === 'create' ? 'Nova' : 'Atualizar'} ↔
+                        </button>
+                      ) : (
+                        <span className={cn(
+                          'text-xs font-medium px-2 py-0.5 rounded',
+                          'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
+                        )}>
+                          Excluir
+                        </span>
+                      )}
                       <span className="text-xs text-gray-500 dark:text-gray-400 flex-1">{action.reason}</span>
                     </div>
 
