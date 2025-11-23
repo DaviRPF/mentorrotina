@@ -193,13 +193,32 @@ ${formatHistoryContext(context)}`;
 async function generateActions(
   mentorResponse: string,
   context: FullContext,
+  intent: IntentType,
   model: string = 'gemini-2.5-flash'
 ): Promise<CalendarAction[]> {
-  // Verifica se a resposta do mentor contém horários/atividades
+  // Verifica se a resposta requer geração de ações
   const hasSchedulePattern = /\d{1,2}:\d{2}\s*[-–]\s*\d{1,2}:\d{2}/.test(mentorResponse);
-  if (!hasSchedulePattern) {
+  const hasDeletePattern = /remover|deletar|apagar|excluir|🗑️/i.test(mentorResponse);
+  const hasMovePattern = /mover|📦/i.test(mentorResponse);
+  const hasUpdatePattern = /atualizar|✏️/i.test(mentorResponse);
+  const hasEventIds = /ID:\s*[a-f0-9-]+/i.test(mentorResponse);
+
+  const needsActions = hasSchedulePattern ||
+    ((hasDeletePattern || hasMovePattern || hasUpdatePattern) && hasEventIds) ||
+    intent === 'modificar_evento';
+
+  if (!needsActions) {
+    console.log('generateActions: Nenhum padrão de ação detectado');
     return [];
   }
+
+  console.log('generateActions: Padrões detectados -', {
+    hasSchedulePattern,
+    hasDeletePattern,
+    hasMovePattern,
+    hasUpdatePattern,
+    hasEventIds
+  });
 
   const defaultCalendarId = context.calendars[0]?.id || '';
 
@@ -276,7 +295,7 @@ export async function processChat(request: ChatRequest): Promise<ChatResponse> {
   // 3. Se a intenção requer ações, gera o JSON
   let actions: CalendarAction[] = [];
   if (classification.needsActions || classification.intent === 'criar_rotina' || classification.intent === 'modificar_evento') {
-    actions = await generateActions(mentorResponse, context, model);
+    actions = await generateActions(mentorResponse, context, classification.intent, model);
   }
 
   return {

@@ -23,8 +23,8 @@ CATEGORIAS:
 1. criar_rotina - Usuário PEDE para criar eventos/rotina/agendar algo
    Exemplos: "monta minha rotina", "agenda meu treino", "cria eventos para", "planeja minha semana"
 
-2. modificar_evento - Usuário quer ALTERAR evento existente
-   Exemplos: "muda o horário", "cancela a reunião", "move o treino para", "ajusta o horário"
+2. modificar_evento - Usuário quer ALTERAR/DELETAR evento existente
+   Exemplos: "muda o horário", "cancela a reunião", "move o treino para", "ajusta o horário", "apaga os treinos", "deleta os eventos", "remove da agenda", "exclui"
 
 3. pergunta_simples - Pergunta que NÃO requer criar eventos
    Exemplos: "o que devo fazer?", "como você separaria?", "vale a pena?", "o que você acha?"

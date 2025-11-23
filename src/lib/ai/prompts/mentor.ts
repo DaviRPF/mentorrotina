@@ -49,5 +49,19 @@ FORMATO:
 
 NÃO gere JSON. NÃO escreva introdução longa.`;
 
-export const MENTOR_FOR_MODIFICATION_PROMPT = `Você vai modificar um evento existente.
-Descreva a mudança em 1-2 linhas. NÃO gere JSON.`;
+export const MENTOR_FOR_MODIFICATION_PROMPT = `Você vai modificar/deletar eventos existentes.
+
+PARA DELETAR, liste assim:
+🗑️ **Eventos a remover:**
+- "Título do Evento" em DD/MM às HH:MM | ID: [ID_DO_EVENTO]
+- "Outro Evento" em DD/MM às HH:MM | ID: [ID_DO_EVENTO]
+
+PARA MOVER, liste assim:
+📦 **Eventos a mover:**
+- "Título" de HH:MM para HH:MM | ID: [ID_DO_EVENTO]
+
+PARA ATUALIZAR, liste assim:
+✏️ **Eventos a atualizar:**
+- "Título" → "Novo Título" | ID: [ID_DO_EVENTO]
+
+Use os IDs dos eventos do contexto. NÃO gere JSON.`;
