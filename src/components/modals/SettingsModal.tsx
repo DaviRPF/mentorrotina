@@ -333,7 +333,7 @@ export function SettingsModal() {
       isOpen={isSettingsOpen}
       onClose={handleClose}
       title="Configurações"
-      className="w-full max-w-2xl"
+      className="w-full max-w-4xl"
     >
       <div className="flex flex-col sm:flex-row gap-4 -mx-3 sm:-mx-6 -mt-2">
         {/* Mobile Tab Selector */}
@@ -381,7 +381,7 @@ export function SettingsModal() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 py-2 px-3 sm:px-0 sm:pr-2 min-h-[300px] sm:min-h-[400px]">
+        <div className="flex-1 py-2 px-3 sm:px-0 sm:pr-4 min-h-[400px] sm:min-h-[500px] max-h-[70vh] overflow-y-auto">
           {/* AI Tab */}
           {activeTab === 'ai' && (
             <div className="space-y-6">
