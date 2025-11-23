@@ -221,8 +221,12 @@ ${mentorResponse}
 
 Gere o array JSON de ações:`;
 
+  console.log('generateActions: Chamando Gemini para gerar JSON...');
   const response = await callGeminiSimple(prompt, NORMAL_CONFIG, model);
+  console.log('generateActions: Resposta do Gemini (primeiros 1000 chars):', response.substring(0, 1000));
+
   const actions = parseActions(response);
+  console.log('generateActions: Actions parseadas:', actions.length);
 
   // Valida as ações
   const validation = validateActions(actions);
@@ -268,6 +272,7 @@ export async function processChat(request: ChatRequest): Promise<ChatResponse> {
   console.log('Classification:', JSON.stringify(classification));
 
   // 2. Gera resposta do mentor
+  console.log('=== MENTOR: Gerando resposta ===');
   const mentorResponse = await generateMentorResponse(
     message,
     classification.intent,
@@ -276,11 +281,17 @@ export async function processChat(request: ChatRequest): Promise<ChatResponse> {
     images,
     model
   );
+  console.log('Mentor response (primeiros 500 chars):', mentorResponse.substring(0, 500));
 
   // 3. Se a intenção requer ações, gera o JSON
   let actions: CalendarAction[] = [];
   if (classification.needsActions || classification.intent === 'criar_rotina' || classification.intent === 'modificar_evento') {
+    console.log('=== ACTION GENERATOR: Gerando ações ===');
+    console.log('Eventos no contexto:', context.events.length);
+    console.log('Eventos:', context.events.map(e => `${e.title} | ID: ${e.id}`).join(', '));
     actions = await generateActions(mentorResponse, context, classification.intent, model);
+    console.log('Ações geradas:', actions.length);
+    console.log('Ações:', JSON.stringify(actions, null, 2));
   }
 
   return {

@@ -23,60 +23,24 @@ export interface CalendarAction {
   };
 }
 
-export const ACTION_GENERATOR_PROMPT = `Você é um gerador de ações JSON para calendário. Sua ÚNICA função é converter descrições de rotina em JSON executável.
+export const ACTION_GENERATOR_PROMPT = `Você é um gerador de ações JSON para calendário.
 
-ENTRADA: Uma descrição de rotina com horários e atividades
+ENTRADA: Descrição do mentor sobre o que fazer (criar, deletar, mover, atualizar eventos)
 SAÍDA: Array JSON de ações
 
-FORMATO DE AÇÕES:
+TIPOS DE AÇÕES:
 
-CRIAR evento:
-{
-  "type": "create",
-  "description": "Título - Dia DD/MM HH:MM-HH:MM",
-  "data": {
-    "title": "Título",
-    "description": null,
-    "startTime": "YYYY-MM-DDTHH:MM:00",
-    "endTime": "YYYY-MM-DDTHH:MM:00",
-    "color": "#cor",
-    "calendarId": "ID_CALENDARIO",
-    "isAllDay": false,
-    "reminderMinutes": 15,
-    "recurrenceRule": null
-  }
-}
+1. CRIAR evento:
+{"type":"create","description":"Título - DD/MM HH:MM","data":{"title":"Título","startTime":"YYYY-MM-DDTHH:MM:00","endTime":"YYYY-MM-DDTHH:MM:00","color":"#3b82f6","calendarId":"ID","isAllDay":false,"reminderMinutes":15}}
 
-ATUALIZAR evento:
-{
-  "type": "update",
-  "description": "Atualizar Título - mudança",
-  "data": {
-    "eventId": "ID_DO_EVENTO",
-    "title": "Novo título",
-    "description": "Nova descrição"
-  }
-}
+2. DELETAR evento (quando menciona "remover", "deletar", "apagar" ou lista com 🗑️):
+{"type":"delete","description":"Deletar Título","data":{"eventId":"ID_DO_EVENTO"}}
 
-MOVER evento:
-{
-  "type": "move",
-  "description": "Mover Título HH:MM → HH:MM",
-  "data": {
-    "eventId": "ID_DO_EVENTO",
-    "startTime": "YYYY-MM-DDTHH:MM:00",
-    "endTime": "YYYY-MM-DDTHH:MM:00"
-  }
-}
+3. MOVER evento:
+{"type":"move","description":"Mover Título","data":{"eventId":"ID_DO_EVENTO","startTime":"YYYY-MM-DDTHH:MM:00","endTime":"YYYY-MM-DDTHH:MM:00"}}
 
-DELETAR evento:
-{
-  "type": "delete",
-  "description": "Deletar Título",
-  "data": {
-    "eventId": "ID_DO_EVENTO"
-  }
-}
+4. ATUALIZAR evento:
+{"type":"update","description":"Atualizar Título","data":{"eventId":"ID_DO_EVENTO","title":"Novo título"}}
 
 CORES DISPONÍVEIS:
 - Azul: #3b82f6 (padrão)
@@ -89,23 +53,23 @@ CORES DISPONÍVEIS:
 - Teal: #14b8a6
 
 REGRAS:
-1. Extraia TODOS os eventos mencionados na descrição
-2. Use datas ISO corretas (YYYY-MM-DDTHH:MM:00)
-3. Use o calendarId fornecido no contexto
-4. Se não tiver cor especificada, use #3b82f6 (azul)
-5. Responda APENAS com o array JSON, sem explicações
-6. A descrição de cada ação deve ser clara: "Título - Dia DD/MM HH:MM-HH:MM"
+1. Extraia TODAS as ações mencionadas (criar, deletar, mover, atualizar)
+2. Para DELETE: use o eventId exato fornecido no contexto
+3. Responda APENAS com o array JSON, sem explicações
 
-EXEMPLO DE ENTRADA:
-"Segunda-feira, 24 de novembro:
-- 07:00-08:30 - Musculação (Push)
-- 17:00-18:00 - Cardio"
+EXEMPLO 1 - CRIAR:
+Entrada: "Segunda, 24/11: 07:00-08:30 - Musculação (Push)"
+Saída: [{"type":"create","description":"Musculação (Push) - 24/11","data":{"title":"Musculação (Push)","startTime":"2025-11-24T07:00:00","endTime":"2025-11-24T08:30:00","color":"#22c55e","calendarId":"ID","isAllDay":false,"reminderMinutes":15}}]
 
-EXEMPLO DE SAÍDA:
-[
-  {"type":"create","description":"Musculação (Push) - Seg 24/11 07:00-08:30","data":{"title":"Musculação (Push)","description":null,"startTime":"2025-11-24T07:00:00","endTime":"2025-11-24T08:30:00","color":"#22c55e","calendarId":"ID","isAllDay":false,"reminderMinutes":15,"recurrenceRule":null}},
-  {"type":"create","description":"Cardio - Seg 24/11 17:00-18:00","data":{"title":"Cardio","description":null,"startTime":"2025-11-24T17:00:00","endTime":"2025-11-24T17:00:00","color":"#f97316","calendarId":"ID","isAllDay":false,"reminderMinutes":15,"recurrenceRule":null}}
-]`;
+EXEMPLO 2 - DELETAR:
+Entrada: "🗑️ Eventos a remover:
+- "Musculação (Push)" em 24/11 às 07:00 | ID: abc-123
+- "Cardio" em 24/11 às 17:00 | ID: def-456"
+Saída: [{"type":"delete","description":"Deletar Musculação (Push)","data":{"eventId":"abc-123"}},{"type":"delete","description":"Deletar Cardio","data":{"eventId":"def-456"}}]
+
+EXEMPLO 3 - MOVER:
+Entrada: "📦 Mover Reunião de 09:00 para 14:00 | ID: ghi-789"
+Saída: [{"type":"move","description":"Mover Reunião","data":{"eventId":"ghi-789","startTime":"2025-11-24T14:00:00","endTime":"2025-11-24T15:00:00"}}]`;
 
 /**
  * Extrai ações da resposta da IA
