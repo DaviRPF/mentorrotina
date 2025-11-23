@@ -22,6 +22,7 @@ import { cn } from '@/lib/utils';
 
 const HOUR_HEIGHT = 60; // pixels per hour
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
+const MOBILE_HOUR_HEIGHT = 50; // smaller on mobile
 
 export function WeekView() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -67,7 +68,8 @@ export function WeekView() {
 
   const getDayFromX = useCallback((x: number, container: HTMLElement): Date | null => {
     const rect = container.getBoundingClientRect();
-    const timeColumnWidth = 60;
+    // Responsive time column width
+    const timeColumnWidth = typeof window !== 'undefined' && window.innerWidth < 640 ? 40 : 60;
     const relativeX = x - rect.left - timeColumnWidth;
     const dayWidth = (rect.width - timeColumnWidth) / 7;
     const dayIndex = Math.floor(relativeX / dayWidth);
@@ -175,7 +177,7 @@ export function WeekView() {
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header with day names */}
       <div className="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-        <div className="w-[60px] flex-shrink-0" />
+        <div className="w-[40px] sm:w-[60px] flex-shrink-0" />
         {days.map((day) => {
           // Check if day has an active/completed session
           const daySession = sessions.find(s => {
@@ -206,14 +208,14 @@ export function WeekView() {
                 <Flag className="w-3.5 h-3.5" />
               </button>
 
-              <div className="text-xs text-gray-500 dark:text-gray-400 uppercase">
+              <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 uppercase">
                 {format(day, 'EEE', { locale: ptBR })}
               </div>
               <div
                 className={cn(
-                  'text-2xl font-medium mt-1',
+                  'text-lg sm:text-2xl font-medium mt-0.5 sm:mt-1',
                   isSameDay(day, today)
-                    ? 'w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center mx-auto'
+                    ? 'w-7 h-7 sm:w-10 sm:h-10 rounded-full bg-blue-600 text-white flex items-center justify-center mx-auto text-sm sm:text-2xl'
                     : 'text-gray-900 dark:text-white'
                 )}
               >
@@ -227,8 +229,9 @@ export function WeekView() {
       {/* All day events row */}
       {hasAllDayEvents && (
         <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-          <div className="w-[60px] flex-shrink-0 text-xs text-gray-500 dark:text-gray-400 p-1">
-            Dia todo
+          <div className="w-[40px] sm:w-[60px] flex-shrink-0 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 p-1">
+            <span className="hidden sm:inline">Dia todo</span>
+            <span className="sm:hidden">Todo</span>
           </div>
           {days.map((day) => {
             const allDayEvents = getAllDayEventsForDay(day);
@@ -263,15 +266,15 @@ export function WeekView() {
       >
         <div className="flex min-h-full">
           {/* Time column */}
-          <div className="w-[60px] flex-shrink-0 bg-white dark:bg-gray-900">
+          <div className="w-[40px] sm:w-[60px] flex-shrink-0 bg-white dark:bg-gray-900">
             {HOURS.map((hour) => (
               <div
                 key={hour}
-                className="h-[60px] border-b border-gray-100 dark:border-gray-800 text-right pr-2 text-xs text-gray-500 dark:text-gray-400"
+                className="h-[60px] border-b border-gray-100 dark:border-gray-800 text-right pr-1 sm:pr-2 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400"
                 style={{ height: HOUR_HEIGHT }}
               >
                 <span className="-mt-2 block">
-                  {hour.toString().padStart(2, '0')}:00
+                  {hour.toString().padStart(2, '0')}<span className="hidden sm:inline">:00</span>
                 </span>
               </div>
             ))}

@@ -1,21 +1,26 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { X, Send, Flag, Loader2, ChevronLeft, FileText } from 'lucide-react';
+import { X, Send, Flag, Loader2, ChevronLeft, FileText, ImageIcon } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useDayTrackerStore, Message } from '@/store/day-tracker-store';
 import { useCalendarStore } from '@/store/calendar-store';
 import { useSettingsStore } from '@/store/settings-store';
 import { DayReportView } from './DayReportView';
+import { useImageUpload } from '@/hooks/useImageUpload';
 
 export function DayTrackerModal() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Image upload hook
+  const { images, isProcessing, addImage, addImagesFromClipboard, removeImage, clearImages } = useImageUpload(5);
 
   const {
     isOpen,
@@ -72,18 +77,46 @@ export function DayTrackerModal() {
     }).sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime());
   }, [selectedDate, events]);
 
+  // Handle paste for images
+  const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (items) {
+      const hasImage = Array.from(items).some(item => item.type.startsWith('image/'));
+      if (hasImage) {
+        e.preventDefault();
+        await addImagesFromClipboard(items);
+      }
+    }
+  }, [addImagesFromClipboard]);
+
+  // Handle file selection
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      for (const file of Array.from(files)) {
+        await addImage(file);
+      }
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, [addImage]);
+
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
 
-    if (!input.trim() || isLoading) return;
+    if ((!input.trim() && images.length === 0) || isLoading) return;
 
     if (!currentSession?.conversationId) {
       setError('Sessão não inicializada. Tente fechar e abrir novamente.');
       return;
     }
 
-    const userMessage = input.trim();
+    const userMessage = input.trim() || (images.length > 0 ? '[Imagem enviada]' : '');
+    const imagesToSend = images.map(img => ({ base64: img.base64, mimeType: img.mimeType }));
+
     setInput('');
+    clearImages();
     setIsLoading(true);
     setError(null);
 
@@ -139,6 +172,7 @@ export function DayTrackerModal() {
             memories: memoriesContext,
             orientations: generalOrientations,
           },
+          images: imagesToSend,
         }),
       });
 
@@ -191,8 +225,8 @@ export function DayTrackerModal() {
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-      <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl w-full max-w-2xl h-[80vh] flex flex-col">
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-0 sm:p-4">
+      <div className="bg-white dark:bg-gray-900 sm:rounded-xl shadow-2xl w-full h-full sm:h-[80vh] sm:max-w-2xl flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-3">
@@ -355,20 +389,66 @@ export function DayTrackerModal() {
                 </div>
               )}
 
+              {/* Image preview */}
+              {images.length > 0 && (
+                <div className="flex gap-2 mb-3 flex-wrap">
+                  {images.map((img) => (
+                    <div key={img.id} className="relative group">
+                      <img
+                        src={`data:${img.mimeType};base64,${img.base64}`}
+                        alt={img.name}
+                        className="w-12 h-12 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
+                      />
+                      <button
+                        onClick={() => removeImage(img.id)}
+                        className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
+                  ))}
+                  {isProcessing && (
+                    <div className="w-12 h-12 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                      <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+
               <form onSubmit={handleSubmit} className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isLoading || images.length >= 5}
+                  className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  title="Adicionar imagem"
+                >
+                  <ImageIcon className="w-5 h-5" />
+                </button>
                 <textarea
                   ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="O que você fez agora?"
+                  onPaste={handlePaste}
+                  placeholder="O que você fez agora? (cole imagens com Ctrl+V)"
                   className="flex-1 resize-none rounded-lg border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500"
                   rows={1}
                   disabled={isLoading}
                 />
                 <button
                   type="submit"
-                  disabled={!input.trim() || isLoading}
+                  disabled={(!input.trim() && images.length === 0) || isLoading}
                   className="p-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   <Send className="w-5 h-5" />

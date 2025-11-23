@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
-import { X, Send, Bot, Trash2, Check, XIcon, Loader2, Sparkles, ChevronDown, ChevronUp, Calendar, Clock, Repeat, Bell, Palette, Plus, MessageSquare, ChevronLeft, Edit2, Save, Brain } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { X, Send, Bot, Trash2, Check, XIcon, Loader2, Sparkles, ChevronDown, ChevronUp, Calendar, Clock, Repeat, Bell, Palette, Plus, MessageSquare, ChevronLeft, Edit2, Save, Brain, ImageIcon, Camera } from 'lucide-react';
+import { useImageUpload, AttachedImage } from '@/hooks/useImageUpload';
 import { useChatStore, PendingAction, PendingMemoryAction, RecurrenceRule } from '@/store/chat-store';
 import { useConversationStore } from '@/store/conversation-store';
 import { useCalendarStore } from '@/store/calendar-store';
@@ -97,6 +98,10 @@ export function ChatSidebar() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Image upload hook
+  const { images, isProcessing, addImage, addImagesFromClipboard, removeImage, clearImages } = useImageUpload(5);
 
   const toggleActionExpanded = (actionId: string) => {
     setExpandedActions(prev => {
@@ -286,11 +291,40 @@ export function ChatSidebar() {
     }
   }, [isResizingMemories]);
 
-  const handleSend = async () => {
-    if (!input.trim() || isLoading) return;
+  // Handle paste for images
+  const handlePaste = useCallback(async (e: React.ClipboardEvent) => {
+    const items = e.clipboardData?.items;
+    if (items) {
+      const hasImage = Array.from(items).some(item => item.type.startsWith('image/'));
+      if (hasImage) {
+        e.preventDefault();
+        await addImagesFromClipboard(items);
+      }
+    }
+  }, [addImagesFromClipboard]);
 
-    const userMessage = input.trim();
+  // Handle file selection
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      for (const file of Array.from(files)) {
+        await addImage(file);
+      }
+    }
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, [addImage]);
+
+  const handleSend = async () => {
+    if ((!input.trim() && images.length === 0) || isLoading) return;
+
+    const userMessage = input.trim() || (images.length > 0 ? '[Imagem enviada]' : '');
+    const imagesToSend = images.map(img => ({ base64: img.base64, mimeType: img.mimeType }));
+
     setInput('');
+    clearImages();
     setIsLoading(true);
     setError(null);
 
@@ -318,6 +352,8 @@ export function ChatSidebar() {
           timeContexts: Object.entries(timeContexts || {})
             .filter(([_, ctx]) => ctx.content?.trim())
             .map(([type, ctx]) => ({ type, content: ctx.content })),
+          // Images
+          images: imagesToSend,
         }),
       });
 
@@ -553,12 +589,12 @@ export function ChatSidebar() {
   return (
     <div
       ref={sidebarRef}
-      className="fixed right-0 top-0 bottom-0 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-xl z-50 flex flex-col"
-      style={{ width: `${sidebarWidth}px` }}
+      className="fixed right-0 top-0 bottom-0 bg-white dark:bg-gray-900 border-l border-gray-200 dark:border-gray-700 shadow-xl z-50 flex flex-col w-full sm:w-auto"
+      style={{ width: typeof window !== 'undefined' && window.innerWidth < 640 ? '100%' : `${sidebarWidth}px` }}
     >
-      {/* Resize handle */}
+      {/* Resize handle - hidden on mobile */}
       <div
-        className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500 transition-colors z-10"
+        className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500 transition-colors z-10 hidden sm:block"
         onMouseDown={() => setIsResizing(true)}
       />
       {/* Header */}
@@ -1287,20 +1323,67 @@ export function ChatSidebar() {
 
           {/* Input */}
           <div className="border-t border-gray-200 dark:border-gray-700 p-4">
+            {/* Image preview */}
+            {images.length > 0 && (
+              <div className="flex gap-2 mb-3 flex-wrap">
+                {images.map((img) => (
+                  <div key={img.id} className="relative group">
+                    <img
+                      src={`data:${img.mimeType};base64,${img.base64}`}
+                      alt={img.name}
+                      className="w-16 h-16 object-cover rounded-lg border border-gray-200 dark:border-gray-700"
+                    />
+                    <button
+                      onClick={() => removeImage(img.id)}
+                      className="absolute -top-2 -right-2 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+                {isProcessing && (
+                  <div className="w-16 h-16 flex items-center justify-center bg-gray-100 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <Loader2 className="w-5 h-5 animate-spin text-gray-400" />
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="flex gap-2">
+              {/* Hidden file input */}
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                onChange={handleFileSelect}
+                className="hidden"
+              />
+
+              {/* Image upload button */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={!aiEnabled || isLoading || showConversationList || images.length >= 5}
+                className="p-2 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                title="Adicionar imagem (ou cole com Ctrl+V)"
+              >
+                <ImageIcon className="w-5 h-5" />
+              </button>
+
               <textarea
                 ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Digite sua mensagem..."
+                onPaste={handlePaste}
+                placeholder="Digite sua mensagem ou cole uma imagem..."
                 rows={1}
                 className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-xl bg-white dark:bg-gray-800 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
                 disabled={!aiEnabled || isLoading || showConversationList}
               />
               <button
                 onClick={handleSend}
-                disabled={!input.trim() || !aiEnabled || isLoading || showConversationList}
+                disabled={(!input.trim() && images.length === 0) || !aiEnabled || isLoading || showConversationList}
                 className="p-2 bg-blue-600 text-white rounded-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Send className="w-5 h-5" />

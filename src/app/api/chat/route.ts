@@ -345,6 +345,7 @@ export async function POST(request: NextRequest) {
       timeContexts = [],
       isDayTracker = false,
       dayTrackerContext = null,
+      images = [], // Array of { base64: string, mimeType: string }
     } = body;
 
     if (!message) {
@@ -513,6 +514,23 @@ ${day.events.map(e => `  - ${e.title} (${e.startTime}-${e.endTime})`).join('\n')
         .replace('{{ORIENTATIONS}}', dayTrackerContext.orientations || 'Nenhuma orientação')
         .replace('{{HISTORY}}', dayTrackerHistoryContext || 'Nenhum histórico disponível ainda.');
 
+      // Build user message parts with optional images
+      const userMessageParts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
+        { text: message }
+      ];
+
+      // Add images if present
+      if (images && images.length > 0) {
+        for (const img of images as Array<{ base64: string; mimeType: string }>) {
+          userMessageParts.push({
+            inlineData: {
+              mimeType: img.mimeType,
+              data: img.base64,
+            }
+          });
+        }
+      }
+
       contents = [
         {
           role: 'user',
@@ -529,10 +547,27 @@ ${day.events.map(e => `  - ${e.title} (${e.startTime}-${e.endTime})`).join('\n')
         })),
         {
           role: 'user',
-          parts: [{ text: message }],
+          parts: userMessageParts,
         },
       ];
     } else {
+      // Build user message parts with optional images
+      const userMessageParts: Array<{ text: string } | { inlineData: { mimeType: string; data: string } }> = [
+        { text: message }
+      ];
+
+      // Add images if present
+      if (images && images.length > 0) {
+        for (const img of images as Array<{ base64: string; mimeType: string }>) {
+          userMessageParts.push({
+            inlineData: {
+              mimeType: img.mimeType,
+              data: img.base64,
+            }
+          });
+        }
+      }
+
       // Regular calendar assistant
       contents = [
         {
@@ -550,7 +585,7 @@ ${day.events.map(e => `  - ${e.title} (${e.startTime}-${e.endTime})`).join('\n')
         })),
         {
           role: 'user',
-          parts: [{ text: message }],
+          parts: userMessageParts,
         },
       ];
     }
