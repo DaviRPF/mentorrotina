@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/prisma';
-import { format, addDays, startOfWeek, endOfWeek } from 'date-fns';
+import { format, addDays, subDays, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models';
@@ -32,23 +32,41 @@ interface CalendarContext {
     name: string;
     color: string;
   }[];
+  // New: Extended history for AI context
+  pastEvents: {
+    date: string;
+    events: { title: string; startTime: string; endTime: string }[];
+  }[];
+  futureEvents: {
+    date: string;
+    events: { title: string; startTime: string; endTime: string }[];
+  }[];
+  reports: {
+    date: string;
+    summary: string;
+    completedTasks: string[];
+    skippedTasks: string[];
+    highlights: string[];
+    insights: string[];
+    completionRate: number;
+  }[];
 }
 
 async function getCalendarContext(): Promise<CalendarContext> {
   const now = new Date();
-  const weekStart = startOfWeek(now, { weekStartsOn: 0 });
-  const weekEnd = endOfWeek(addDays(now, 14), { weekStartsOn: 0 });
+  const thirtyDaysAgo = startOfDay(subDays(now, 30));
+  const thirtyDaysAhead = endOfDay(addDays(now, 30));
 
   // Get day of week info
   const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
   const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
   const dayName = format(now, 'EEEE', { locale: ptBR }); // "sábado", "domingo", etc.
 
-  const [events, calendars] = await Promise.all([
+  const [events, calendars, dayReports] = await Promise.all([
     prisma.event.findMany({
       where: {
         OR: [
-          { startTime: { gte: weekStart, lte: weekEnd } },
+          { startTime: { gte: thirtyDaysAgo, lte: thirtyDaysAhead } },
           { recurrenceRule: { not: null } },
         ],
         parentEventId: null,
@@ -59,7 +77,61 @@ async function getCalendarContext(): Promise<CalendarContext> {
     prisma.calendar.findMany({
       where: { isVisible: true },
     }),
+    // Fetch reports from last 30 days
+    prisma.dayReport.findMany({
+      where: {
+        createdAt: { gte: thirtyDaysAgo },
+      },
+      include: {
+        daySession: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    }),
   ]);
+
+  // Separate past and future events
+  const pastEvents: CalendarContext['pastEvents'] = [];
+  const futureEvents: CalendarContext['futureEvents'] = [];
+
+  // Group events by date
+  const eventsByDate = new Map<string, typeof events>();
+  for (const event of events) {
+    const dateKey = format(event.startTime, 'yyyy-MM-dd');
+    if (!eventsByDate.has(dateKey)) {
+      eventsByDate.set(dateKey, []);
+    }
+    eventsByDate.get(dateKey)!.push(event);
+  }
+
+  const todayKey = format(now, 'yyyy-MM-dd');
+
+  for (const [dateKey, dateEvents] of eventsByDate) {
+    const formatted = {
+      date: format(new Date(dateKey), "EEEE, d/MM", { locale: ptBR }),
+      events: dateEvents.map(e => ({
+        title: e.title,
+        startTime: format(e.startTime, 'HH:mm'),
+        endTime: format(e.endTime, 'HH:mm'),
+      })),
+    };
+
+    if (dateKey < todayKey) {
+      pastEvents.push(formatted);
+    } else if (dateKey > todayKey) {
+      futureEvents.push(formatted);
+    }
+  }
+
+  // Parse reports
+  const reports = dayReports.map(r => ({
+    date: format(r.daySession.date, "EEEE, d/MM", { locale: ptBR }),
+    summary: r.summary,
+    completedTasks: JSON.parse(r.completedTasks || '[]'),
+    skippedTasks: JSON.parse(r.skippedTasks || '[]'),
+    highlights: JSON.parse(r.highlights || '[]'),
+    insights: JSON.parse(r.insights || '[]'),
+    completionRate: r.completionRate,
+  }));
 
   return {
     today: format(now, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR }),
@@ -67,27 +139,33 @@ async function getCalendarContext(): Promise<CalendarContext> {
     currentTime: format(now, 'HH:mm'),
     dayOfWeek: dayName,
     isWeekend,
-    events: events.map((e) => ({
-      id: e.id,
-      title: e.title,
-      description: e.description,
-      startTime: format(e.startTime, "EEEE, d/MM 'às' HH:mm", { locale: ptBR }),
-      startTimeISO: e.startTime.toISOString(),
-      endTime: format(e.endTime, 'HH:mm'),
-      endTimeISO: e.endTime.toISOString(),
-      isAllDay: e.isAllDay,
-      calendarName: e.calendar.name,
-      calendarId: e.calendarId,
-      color: e.color,
-      isRecurring: !!e.recurrenceRule,
-      recurrenceRule: e.recurrenceRule,
-      reminderMinutes: e.reminderMinutes,
-    })),
+    events: events
+      .filter(e => format(e.startTime, 'yyyy-MM-dd') === todayKey || format(e.startTime, 'yyyy-MM-dd') > todayKey)
+      .slice(0, 50) // Limit to next 50 events for main context
+      .map((e) => ({
+        id: e.id,
+        title: e.title,
+        description: e.description,
+        startTime: format(e.startTime, "EEEE, d/MM 'às' HH:mm", { locale: ptBR }),
+        startTimeISO: e.startTime.toISOString(),
+        endTime: format(e.endTime, 'HH:mm'),
+        endTimeISO: e.endTime.toISOString(),
+        isAllDay: e.isAllDay,
+        calendarName: e.calendar.name,
+        calendarId: e.calendarId,
+        color: e.color,
+        isRecurring: !!e.recurrenceRule,
+        recurrenceRule: e.recurrenceRule,
+        reminderMinutes: e.reminderMinutes,
+      })),
     calendars: calendars.map((c) => ({
       id: c.id,
       name: c.name,
       color: c.color,
     })),
+    pastEvents: pastEvents.slice(-15), // Last 15 days with events
+    futureEvents: futureEvents.slice(0, 15), // Next 15 days with events
+    reports,
   };
 }
 
@@ -208,6 +286,7 @@ const DAY_TRACKER_PROMPT = `Você é o Companheiro de Dia do MentorRotina. Seu p
 - Você confirma, motiva e dá dicas práticas
 - Você mostra qual é a PRÓXIMA atividade do dia
 - Você ajuda a manter a energia e foco
+- Você tem acesso ao HISTÓRICO de dias anteriores para contextualizar
 
 === FORMATO DAS RESPOSTAS ===
 1. Reconheça o que o usuário fez (breve, positivo)
@@ -226,17 +305,23 @@ Você: "💪 Ótimo treino! Lembre-se de se hidratar bem agora.
 - Motive mas não seja exagerado
 - Se o usuário pulou algo, não julgue - ajude a replanejar
 - Use as memórias e orientações para personalizar conselhos
+- Quando o usuário perguntar sobre dias anteriores, USE o histórico fornecido
 
 === CONTEXTO DO DIA ===
 DATA: {{DATE}}
-EVENTOS PLANEJADOS:
+HORA ATUAL: {{CURRENT_TIME}}
+
+EVENTOS PLANEJADOS PARA HOJE:
 {{EVENTS}}
 
 MEMÓRIAS DO USUÁRIO:
 {{MEMORIES}}
 
 ORIENTAÇÕES:
-{{ORIENTATIONS}}`;
+{{ORIENTATIONS}}
+
+=== HISTÓRICO (últimos 30 dias) ===
+{{HISTORY}}`;
 
 export async function POST(request: NextRequest) {
   try {
@@ -336,28 +421,97 @@ ${ctx.content}
 `;
     }
 
+    // Build historical context
+    let historicalContext = '';
+
+    if (context.pastEvents.length > 0) {
+      historicalContext += `
+📅 EVENTOS DOS ÚLTIMOS DIAS (o que estava planejado):
+${context.pastEvents.map(day => `
+${day.date}:
+${day.events.map(e => `  - ${e.title} (${e.startTime}-${e.endTime})`).join('\n')}`).join('\n')}
+`;
+    }
+
+    if (context.reports.length > 0) {
+      historicalContext += `
+📊 RELATÓRIOS DE ACOMPANHAMENTO (o que realmente aconteceu):
+${context.reports.map(r => `
+${r.date} (${r.completionRate.toFixed(0)}% concluído):
+  Resumo: ${r.summary}
+  ✓ Feito: ${r.completedTasks.length > 0 ? r.completedTasks.join(', ') : 'nada registrado'}
+  ✗ Não feito: ${r.skippedTasks.length > 0 ? r.skippedTasks.join(', ') : 'nada registrado'}
+  💡 Insights: ${r.insights.length > 0 ? r.insights.join('; ') : 'nenhum'}`).join('\n')}
+`;
+    }
+
+    if (context.futureEvents.length > 0) {
+      historicalContext += `
+📆 PRÓXIMOS DIAS (o que está planejado):
+${context.futureEvents.map(day => `
+${day.date}:
+${day.events.map(e => `  - ${e.title} (${e.startTime}-${e.endTime})`).join('\n')}`).join('\n')}
+`;
+    }
+
     const calendarContextMessage = `
 CONTEXTO ATUAL:
 
 Calendários (use o primeiro ID como padrão):
 ${context.calendars.map((c) => `- "${c.name}" | ID: ${c.id} | Cor: ${c.color}`).join('\n')}
 
-Eventos existentes:
+Eventos de hoje e próximos:
 ${context.events.length > 0
   ? context.events.map((e) => `- "${e.title}" | ${e.startTime}-${e.endTime} | ID: ${e.id}${e.isRecurring ? ' | Recorrente' : ''}`).join('\n')
   : 'Nenhum evento.'}
+${historicalContext}
 ${mentorContext}`;
 
     // Build contents based on whether it's day tracker or regular chat
     let contents;
 
     if (isDayTracker && dayTrackerContext) {
+      // Build history context for day tracker
+      let dayTrackerHistoryContext = '';
+
+      if (context.pastEvents.length > 0) {
+        dayTrackerHistoryContext += `
+📅 EVENTOS DOS ÚLTIMOS DIAS (o que estava planejado):
+${context.pastEvents.map(day => `
+${day.date}:
+${day.events.map(e => `  - ${e.title} (${e.startTime}-${e.endTime})`).join('\n')}`).join('\n')}
+`;
+      }
+
+      if (context.reports.length > 0) {
+        dayTrackerHistoryContext += `
+📊 RELATÓRIOS DE ACOMPANHAMENTO (o que realmente aconteceu):
+${context.reports.map(r => `
+${r.date} (${r.completionRate.toFixed(0)}% concluído):
+  Resumo: ${r.summary}
+  ✓ Feito: ${r.completedTasks.length > 0 ? r.completedTasks.join(', ') : 'nada registrado'}
+  ✗ Não feito: ${r.skippedTasks.length > 0 ? r.skippedTasks.join(', ') : 'nada registrado'}
+  💡 Insights: ${r.insights.length > 0 ? r.insights.join('; ') : 'nenhum'}`).join('\n')}
+`;
+      }
+
+      if (context.futureEvents.length > 0) {
+        dayTrackerHistoryContext += `
+📆 PRÓXIMOS DIAS (o que está planejado):
+${context.futureEvents.map(day => `
+${day.date}:
+${day.events.map(e => `  - ${e.title} (${e.startTime}-${e.endTime})`).join('\n')}`).join('\n')}
+`;
+      }
+
       // Day tracker uses a different prompt focused on day accompaniment
       const dayTrackerPrompt = DAY_TRACKER_PROMPT
         .replace('{{DATE}}', dayTrackerContext.date ? format(new Date(dayTrackerContext.date), "EEEE, d 'de' MMMM", { locale: ptBR }) : context.today)
+        .replace('{{CURRENT_TIME}}', context.currentTime)
         .replace('{{EVENTS}}', dayTrackerContext.events || 'Nenhum evento planejado')
         .replace('{{MEMORIES}}', dayTrackerContext.memories || 'Nenhuma memória')
-        .replace('{{ORIENTATIONS}}', dayTrackerContext.orientations || 'Nenhuma orientação');
+        .replace('{{ORIENTATIONS}}', dayTrackerContext.orientations || 'Nenhuma orientação')
+        .replace('{{HISTORY}}', dayTrackerHistoryContext || 'Nenhum histórico disponível ainda.');
 
       contents = [
         {
