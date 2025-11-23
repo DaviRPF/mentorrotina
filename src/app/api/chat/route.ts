@@ -362,6 +362,8 @@ Você: "💪 Ótimo treino! Lembre-se de se hidratar bem agora.
 - Se o usuário pulou algo, não julgue - ajude a replanejar
 - Use as memórias e orientações para personalizar conselhos
 - Quando o usuário perguntar sobre dias anteriores, USE o histórico fornecido
+- LEMBRE o usuário sobre TAREFAS PENDENTES (todos) com deadline próximo
+- Se uma tarefa está ATRASADA ou URGENTE, mencione para o usuário priorizar
 
 === CONTEXTO DO DIA ===
 DATA: {{DATE}}
@@ -375,6 +377,9 @@ MEMÓRIAS DO USUÁRIO:
 
 ORIENTAÇÕES:
 {{ORIENTATIONS}}
+
+=== TAREFAS PENDENTES (TODOS) ===
+{{TODOS}}
 
 === HISTÓRICO (últimos 30 dias) ===
 {{HISTORY}}`;
@@ -602,6 +607,42 @@ ${day.events.map(e => `  - [${e.date}] ${e.title} (${e.startTime}-${e.endTime})`
 `;
       }
 
+      // Build todos context for day tracker (same format as main chat)
+      let dayTrackerTodosContext = 'Nenhuma tarefa pendente';
+      if (context.todos.length > 0) {
+        const now = new Date();
+
+        const getCountdown = (deadlineISO: string | null) => {
+          if (!deadlineISO) return 'Sem prazo definido';
+
+          const deadline = new Date(deadlineISO);
+          const diffMs = deadline.getTime() - now.getTime();
+
+          if (diffMs < 0) {
+            const hoursAgo = Math.abs(Math.floor(diffMs / (1000 * 60 * 60)));
+            if (hoursAgo < 24) return `⚠️ ATRASADO há ${hoursAgo}h`;
+            const daysAgo = Math.floor(hoursAgo / 24);
+            return `⚠️ ATRASADO há ${daysAgo} dia${daysAgo > 1 ? 's' : ''}`;
+          }
+
+          const hoursLeft = Math.floor(diffMs / (1000 * 60 * 60));
+          if (hoursLeft < 24) return `🔴 Faltam ${hoursLeft}h - URGENTE`;
+
+          const daysLeft = Math.floor(hoursLeft / 24);
+          if (daysLeft === 1) return '🟠 Falta 1 dia';
+          if (daysLeft <= 3) return `🟠 Faltam ${daysLeft} dias`;
+          if (daysLeft <= 7) return `🟡 Faltam ${daysLeft} dias`;
+          return `🟢 Faltam ${daysLeft} dias`;
+        };
+
+        dayTrackerTodosContext = context.todos.map(t => {
+          const countdown = getCountdown(t.deadlineISO);
+          const duration = t.estimatedMinutes ? ` | ~${t.estimatedMinutes} min` : '';
+          const deadlineDate = t.deadline ? ` (${t.deadline})` : '';
+          return `- ${countdown}${deadlineDate}: ${t.content}${duration}`;
+        }).join('\n');
+      }
+
       // Day tracker uses a different prompt focused on day accompaniment
       const dayTrackerPrompt = DAY_TRACKER_PROMPT
         .replace('{{DATE}}', dayTrackerContext.date ? format(new Date(dayTrackerContext.date), "EEEE, d 'de' MMMM", { locale: ptBR }) : context.today)
@@ -609,6 +650,7 @@ ${day.events.map(e => `  - [${e.date}] ${e.title} (${e.startTime}-${e.endTime})`
         .replace('{{EVENTS}}', dayTrackerContext.events || 'Nenhum evento planejado')
         .replace('{{MEMORIES}}', dayTrackerContext.memories || 'Nenhuma memória')
         .replace('{{ORIENTATIONS}}', dayTrackerContext.orientations || 'Nenhuma orientação')
+        .replace('{{TODOS}}', dayTrackerTodosContext)
         .replace('{{HISTORY}}', dayTrackerHistoryContext || 'Nenhum histórico disponível ainda.');
 
       // Build user message parts with optional images
