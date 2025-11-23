@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useEffect } from 'react';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight, Search, Menu, Sun, Moon, Settings, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -15,8 +15,6 @@ interface HeaderProps {
 }
 
 export function Header({ onMenuClick }: HeaderProps) {
-  const [isDark, setIsDark] = useState(false);
-
   const {
     currentDate,
     view,
@@ -30,31 +28,39 @@ export function Header({ onMenuClick }: HeaderProps) {
     setSearchQuery,
   } = useCalendarStore();
 
-  const { setIsSettingsOpen, aiEnabled } = useSettingsStore();
+  const { setIsSettingsOpen, aiEnabled, theme, updateSettings } = useSettingsStore();
   const { toggleOpen: toggleChat, isOpen: isChatOpen } = useChatStore();
 
+  // Apply theme based on settings
   useEffect(() => {
-    // Check initial theme preference
-    const savedTheme = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const applyTheme = () => {
+      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+      const shouldBeDark = theme === 'dark' || (theme === 'system' && prefersDark);
 
-    if (savedTheme === 'dark' || (!savedTheme && prefersDark)) {
-      setIsDark(true);
-      document.documentElement.classList.add('dark');
+      if (shouldBeDark) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    };
+
+    applyTheme();
+
+    // Listen for system theme changes when using 'system' mode
+    if (theme === 'system') {
+      const mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
+      const handler = () => applyTheme();
+      mediaQuery.addEventListener('change', handler);
+      return () => mediaQuery.removeEventListener('change', handler);
     }
-  }, []);
+  }, [theme]);
 
   const toggleDarkMode = () => {
-    const newIsDark = !isDark;
-    setIsDark(newIsDark);
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const isDark = theme === 'dark' || (theme === 'system' && prefersDark);
 
-    if (newIsDark) {
-      document.documentElement.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
-    }
+    // Toggle between light and dark (not system)
+    updateSettings({ theme: isDark ? 'light' : 'dark' });
   };
 
   const getTitle = () => {
@@ -76,6 +82,10 @@ export function Header({ onMenuClick }: HeaderProps) {
     { label: 'Mês', value: 'month' },
     { label: 'Agenda', value: 'agenda' },
   ];
+
+  // Compute if currently dark for the icon
+  const prefersDark = typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const isDark = theme === 'dark' || (theme === 'system' && prefersDark);
 
   return (
     <header className="h-14 sm:h-16 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-between px-2 sm:px-4 gap-1 sm:gap-4">
