@@ -391,8 +391,18 @@ export function ChatSidebar() {
           const memoryData = await memoryResponse.json();
           console.log('Memory analysis result:', memoryData);
           if (memoryData.actions && memoryData.actions.length > 0) {
+            // Enrich actions with currentContent if missing (for updates)
+            const enrichedActions = memoryData.actions.map((action: { type: string; memoryId?: string; currentContent?: string }) => {
+              if (action.type === 'update' && action.memoryId && !action.currentContent) {
+                const existingMemory = memories.find(m => m.id === action.memoryId);
+                if (existingMemory) {
+                  return { ...action, currentContent: existingMemory.content };
+                }
+              }
+              return action;
+            });
             clearPendingMemoryActions();
-            addPendingMemoryActions(memoryData.actions);
+            addPendingMemoryActions(enrichedActions);
           }
         } else {
           console.error('Memory analysis failed:', memoryResponse.status, await memoryResponse.text());
