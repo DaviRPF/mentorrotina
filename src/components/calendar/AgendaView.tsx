@@ -53,13 +53,13 @@ export function AgendaView() {
 
   return (
     <div className="flex-1 overflow-auto">
-      <div className="max-w-3xl mx-auto py-4">
+      <div className="w-full md:max-w-3xl mx-auto py-2 sm:py-4 px-2 sm:px-0">
         {daysWithEvents.map(({ date, events }) => (
-          <div key={date.toISOString()} className="mb-6">
+          <div key={date.toISOString()} className="mb-4 sm:mb-6">
             {/* Day header */}
             <div
               className={cn(
-                'flex items-center gap-4 px-4 py-2 sticky top-0 bg-white dark:bg-gray-900 z-10',
+                'flex items-center gap-2 sm:gap-4 px-2 sm:px-4 py-2 sticky top-0 bg-white dark:bg-gray-900 z-10',
                 isToday(date) && 'bg-blue-50 dark:bg-blue-900/20'
               )}
             >
@@ -74,20 +74,20 @@ export function AgendaView() {
                 </div>
                 <div
                   className={cn(
-                    'text-2xl font-bold',
-                    isToday(date) && 'bg-blue-600 text-white w-10 h-10 rounded-full flex items-center justify-center'
+                    'text-xl sm:text-2xl font-bold',
+                    isToday(date) && 'bg-blue-600 text-white w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center'
                   )}
                 >
                   {format(date, 'd')}
                 </div>
               </div>
-              <div className="text-sm text-gray-500 dark:text-gray-400 capitalize">
+              <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 capitalize">
                 {format(date, "MMMM 'de' yyyy", { locale: ptBR })}
               </div>
             </div>
 
             {/* Events */}
-            <div className="space-y-2 px-4">
+            <div className="space-y-2 px-2 sm:px-4">
               {events.map((event) => {
                 const start = new Date(event.startTime);
                 const end = new Date(event.endTime);
@@ -96,7 +96,7 @@ export function AgendaView() {
                   <div
                     key={event.id}
                     onClick={() => handleEventClick(event)}
-                    className="flex items-start gap-4 p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors border border-gray-200 dark:border-gray-700"
+                    className="flex items-start gap-2 sm:gap-4 p-2 sm:p-3 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 cursor-pointer transition-colors border border-gray-200 dark:border-gray-700"
                   >
                     {/* Color indicator */}
                     <div
@@ -105,7 +105,7 @@ export function AgendaView() {
                     />
 
                     {/* Time */}
-                    <div className="w-20 flex-shrink-0 text-sm">
+                    <div className="w-14 sm:w-20 flex-shrink-0 text-xs sm:text-sm">
                       {event.isAllDay ? (
                         <span className="text-gray-500 dark:text-gray-400">Dia todo</span>
                       ) : (
@@ -122,11 +122,11 @@ export function AgendaView() {
 
                     {/* Content */}
                     <div className="flex-1 min-w-0">
-                      <h3 className="font-medium text-gray-900 dark:text-white truncate">
+                      <h3 className="font-medium text-sm sm:text-base text-gray-900 dark:text-white truncate">
                         {event.title}
                       </h3>
                       {event.description && (
-                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
+                        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 line-clamp-2">
                           {event.description}
                         </p>
                       )}

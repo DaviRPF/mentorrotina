@@ -33,32 +33,32 @@ export function MiniCalendar() {
   const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
   return (
-    <div className="p-4">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="text-sm font-medium text-gray-900 dark:text-white capitalize">
+    <div className="p-3 sm:p-4">
+      <div className="flex items-center justify-between mb-3 sm:mb-4">
+        <h3 className="text-xs sm:text-sm font-medium text-gray-900 dark:text-white capitalize">
           {format(viewDate, 'MMMM yyyy', { locale: ptBR })}
         </h3>
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-0.5 sm:gap-1">
           <button
             onClick={() => setViewDate(subMonths(viewDate, 1))}
-            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+            className="p-1.5 sm:p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
           >
             <ChevronLeft className="w-4 h-4" />
           </button>
           <button
             onClick={() => setViewDate(addMonths(viewDate, 1))}
-            className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
+            className="p-1.5 sm:p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
           >
             <ChevronRight className="w-4 h-4" />
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-1">
+      <div className="grid grid-cols-7 gap-0.5 sm:gap-1">
         {weekDays.map((day, i) => (
           <div
             key={i}
-            className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-1"
+            className="text-center text-xs font-medium text-gray-500 dark:text-gray-400 py-0.5 sm:py-1"
           >
             {day}
           </div>
@@ -69,7 +69,7 @@ export function MiniCalendar() {
             key={day.toISOString()}
             onClick={() => setCurrentDate(day)}
             className={cn(
-              'text-center text-sm py-1 rounded-full transition-colors',
+              'text-center text-xs sm:text-sm py-1 sm:py-1 rounded-full transition-colors min-h-[28px] sm:min-h-[32px]',
               !isSameMonth(day, viewDate) && 'text-gray-400 dark:text-gray-600',
               isSameMonth(day, viewDate) && 'text-gray-900 dark:text-white',
               isSameDay(day, today) && 'bg-blue-600 text-white',

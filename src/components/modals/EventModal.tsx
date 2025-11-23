@@ -302,9 +302,9 @@ export function EventModal() {
       isOpen={isEventModalOpen}
       onClose={handleClose}
       title={isEditing ? 'Editar evento' : 'Novo evento'}
-      className="max-w-lg"
+      className="w-full max-w-lg"
     >
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         {/* Title */}
         <Input
           placeholder="Adicionar título"
@@ -386,13 +386,13 @@ export function EventModal() {
             </select>
 
             {recurrenceType === 'custom' && (
-              <div className="flex gap-1">
+              <div className="flex flex-wrap gap-1">
                 {weekDays.map((day) => (
                   <button
                     key={day.value}
                     onClick={() => toggleCustomDay(day.value)}
                     className={cn(
-                      'w-8 h-8 rounded-full text-sm font-medium transition-colors',
+                      'w-10 h-10 sm:w-8 sm:h-8 rounded-full text-sm font-medium transition-colors',
                       customDays.includes(day.value)
                         ? 'bg-blue-600 text-white'
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
@@ -466,13 +466,13 @@ export function EventModal() {
         {/* Color */}
         <div className="flex items-center gap-3">
           <div className="w-5 h-5 rounded-full" style={{ backgroundColor: color }} />
-          <div className="flex-1 flex flex-wrap gap-2">
+          <div className="flex-1 flex flex-wrap gap-1.5 sm:gap-2">
             {COLORS.map((c) => (
               <button
                 key={c.value}
                 onClick={() => setColor(c.value)}
                 className={cn(
-                  'w-6 h-6 rounded-full transition-transform',
+                  'w-8 h-8 sm:w-6 sm:h-6 rounded-full transition-transform',
                   color === c.value && 'ring-2 ring-offset-2 ring-gray-400 scale-110'
                 )}
                 style={{ backgroundColor: c.value }}

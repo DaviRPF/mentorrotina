@@ -46,22 +46,22 @@ export function DayReportView({ report }: DayReportViewProps) {
   };
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-6">
+    <div className="flex-1 overflow-y-auto p-3 sm:p-4 space-y-4 sm:space-y-6">
       {/* Summary */}
-      <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-4 border border-green-200 dark:border-green-800">
-        <h3 className="font-semibold text-green-800 dark:text-green-200 mb-2">Resumo do Dia</h3>
-        <p className="text-gray-700 dark:text-gray-300">{report.summary}</p>
+      <div className="bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-3 sm:p-4 border border-green-200 dark:border-green-800">
+        <h3 className="font-semibold text-green-800 dark:text-green-200 mb-2 text-sm sm:text-base">Resumo do Dia</h3>
+        <p className="text-gray-700 dark:text-gray-300 text-sm">{report.summary}</p>
       </div>
 
       {/* Metrics */}
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
         {/* Completion Rate */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="w-5 h-5 text-blue-500" />
-            <span className="text-sm font-medium text-gray-600 dark:text-gray-400">Taxa de Conclusão</span>
+            <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-blue-500" />
+            <span className="text-xs sm:text-sm font-medium text-gray-600 dark:text-gray-400">Taxa de Conclusão</span>
           </div>
-          <div className={`text-2xl font-bold rounded-lg px-2 py-1 inline-block ${getCompletionColor(report.completionRate)}`}>
+          <div className={`text-xl sm:text-2xl font-bold rounded-lg px-2 py-1 inline-block ${getCompletionColor(report.completionRate)}`}>
             {report.completionRate}%
           </div>
           <p className="text-xs text-gray-500 mt-1">
@@ -70,7 +70,7 @@ export function DayReportView({ report }: DayReportViewProps) {
         </div>
 
         {/* Energy & Mood */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
           {report.energyLevel && (
             <div className="mb-3">
               <div className="flex items-center gap-2 mb-1">
@@ -97,14 +97,14 @@ export function DayReportView({ report }: DayReportViewProps) {
 
       {/* Completed Tasks */}
       {completedTasks.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2 mb-3">
-            <CheckCircle className="w-5 h-5 text-green-500" />
-            <h4 className="font-medium text-gray-900 dark:text-white">Concluídos</h4>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2 mb-2 sm:mb-3">
+            <CheckCircle className="w-4 h-4 sm:w-5 sm:h-5 text-green-500" />
+            <h4 className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">Concluídos</h4>
           </div>
-          <ul className="space-y-2">
+          <ul className="space-y-1.5 sm:space-y-2">
             {completedTasks.map((task, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <li key={i} className="flex items-start gap-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                 <span className="text-green-500 mt-0.5">✓</span>
                 {task}
               </li>
@@ -115,14 +115,14 @@ export function DayReportView({ report }: DayReportViewProps) {
 
       {/* Skipped Tasks */}
       {skippedTasks.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2 mb-3">
-            <XCircle className="w-5 h-5 text-red-500" />
-            <h4 className="font-medium text-gray-900 dark:text-white">Não realizados</h4>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2 mb-2 sm:mb-3">
+            <XCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-500" />
+            <h4 className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">Não realizados</h4>
           </div>
-          <ul className="space-y-2">
+          <ul className="space-y-1.5 sm:space-y-2">
             {skippedTasks.map((task, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <li key={i} className="flex items-start gap-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                 <span className="text-red-500 mt-0.5">✗</span>
                 {task}
               </li>
@@ -133,14 +133,14 @@ export function DayReportView({ report }: DayReportViewProps) {
 
       {/* Highlights */}
       {highlights.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2 mb-3">
-            <Star className="w-5 h-5 text-yellow-500" />
-            <h4 className="font-medium text-gray-900 dark:text-white">Destaques</h4>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2 mb-2 sm:mb-3">
+            <Star className="w-4 h-4 sm:w-5 sm:h-5 text-yellow-500" />
+            <h4 className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">Destaques</h4>
           </div>
-          <ul className="space-y-2">
+          <ul className="space-y-1.5 sm:space-y-2">
             {highlights.map((highlight, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <li key={i} className="flex items-start gap-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                 <span className="text-yellow-500 mt-0.5">★</span>
                 {highlight}
               </li>
@@ -151,14 +151,14 @@ export function DayReportView({ report }: DayReportViewProps) {
 
       {/* Challenges */}
       {challenges.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2 mb-3">
-            <AlertTriangle className="w-5 h-5 text-orange-500" />
-            <h4 className="font-medium text-gray-900 dark:text-white">Desafios</h4>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2 mb-2 sm:mb-3">
+            <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500" />
+            <h4 className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">Desafios</h4>
           </div>
-          <ul className="space-y-2">
+          <ul className="space-y-1.5 sm:space-y-2">
             {challenges.map((challenge, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <li key={i} className="flex items-start gap-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                 <span className="text-orange-500 mt-0.5">!</span>
                 {challenge}
               </li>
@@ -169,14 +169,14 @@ export function DayReportView({ report }: DayReportViewProps) {
 
       {/* Insights */}
       {insights.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
-          <div className="flex items-center gap-2 mb-3">
-            <Lightbulb className="w-5 h-5 text-purple-500" />
-            <h4 className="font-medium text-gray-900 dark:text-white">Insights</h4>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-gray-700">
+          <div className="flex items-center gap-2 mb-2 sm:mb-3">
+            <Lightbulb className="w-4 h-4 sm:w-5 sm:h-5 text-purple-500" />
+            <h4 className="font-medium text-gray-900 dark:text-white text-sm sm:text-base">Insights</h4>
           </div>
-          <ul className="space-y-2">
+          <ul className="space-y-1.5 sm:space-y-2">
             {insights.map((insight, i) => (
-              <li key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
+              <li key={i} className="flex items-start gap-2 text-xs sm:text-sm text-gray-700 dark:text-gray-300">
                 <span className="text-purple-500 mt-0.5">💡</span>
                 {insight}
               </li>

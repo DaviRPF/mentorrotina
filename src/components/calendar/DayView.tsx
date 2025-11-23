@@ -133,16 +133,16 @@ export function DayView() {
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="flex border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-        <div className="w-[60px] flex-shrink-0" />
-        <div className="flex-1 text-center py-4">
-          <div className="text-sm text-gray-500 dark:text-gray-400 uppercase">
+        <div className="w-[40px] sm:w-[60px] flex-shrink-0" />
+        <div className="flex-1 text-center py-2 sm:py-4">
+          <div className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 uppercase">
             {format(currentDate, 'EEEE', { locale: ptBR })}
           </div>
           <div
             className={cn(
-              'text-3xl font-medium mt-1 inline-flex items-center justify-center',
+              'text-2xl sm:text-3xl font-medium mt-1 inline-flex items-center justify-center',
               isSameDay(currentDate, today)
-                ? 'w-12 h-12 rounded-full bg-blue-600 text-white'
+                ? 'w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-blue-600 text-white'
                 : 'text-gray-900 dark:text-white'
             )}
           >
@@ -154,14 +154,15 @@ export function DayView() {
       {/* All day events */}
       {allDayEvents.length > 0 && (
         <div className="flex border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-          <div className="w-[60px] flex-shrink-0 text-xs text-gray-500 dark:text-gray-400 p-2">
-            Dia todo
+          <div className="w-[40px] sm:w-[60px] flex-shrink-0 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 p-1 sm:p-2">
+            <span className="hidden sm:inline">Dia todo</span>
+            <span className="sm:hidden">Todo</span>
           </div>
-          <div className="flex-1 p-2 space-y-1">
+          <div className="flex-1 p-1 sm:p-2 space-y-1">
             {allDayEvents.map((event) => (
               <div
                 key={event.id}
-                className="text-sm px-3 py-1.5 rounded cursor-pointer hover:opacity-80"
+                className="text-xs sm:text-sm px-2 sm:px-3 py-1 sm:py-1.5 rounded cursor-pointer hover:opacity-80"
                 style={{ backgroundColor: event.color, color: 'white' }}
               >
                 {event.title}
@@ -182,11 +183,11 @@ export function DayView() {
       >
         <div className="flex min-h-full">
           {/* Time column */}
-          <div className="w-[60px] flex-shrink-0 bg-white dark:bg-gray-900">
+          <div className="w-[40px] sm:w-[60px] flex-shrink-0 bg-white dark:bg-gray-900">
             {HOURS.map((hour) => (
               <div
                 key={hour}
-                className="h-[60px] border-b border-gray-100 dark:border-gray-800 text-right pr-2 text-xs text-gray-500 dark:text-gray-400"
+                className="h-[60px] border-b border-gray-100 dark:border-gray-800 text-right pr-1 sm:pr-2 text-[10px] sm:text-xs text-gray-500 dark:text-gray-400"
               >
                 <span className="-mt-2 block">
                   {hour.toString().padStart(2, '0')}:00

@@ -64,6 +64,7 @@ export function MonthView() {
   };
 
   const weekDays = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+  const weekDaysShort = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
 
   // Group days into weeks
   const weeks: Date[][] = [];
@@ -75,24 +76,25 @@ export function MonthView() {
     <div className="flex-1 flex flex-col overflow-hidden">
       {/* Header */}
       <div className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-        {weekDays.map((day) => (
+        {weekDays.map((day, i) => (
           <div
             key={day}
-            className="py-3 text-center text-sm font-medium text-gray-500 dark:text-gray-400 border-l border-gray-200 dark:border-gray-700 first:border-l-0"
+            className="py-2 sm:py-3 text-center text-xs sm:text-sm font-medium text-gray-500 dark:text-gray-400 border-l border-gray-200 dark:border-gray-700 first:border-l-0"
           >
-            {day}
+            <span className="hidden sm:inline">{day}</span>
+            <span className="sm:hidden">{weekDaysShort[i]}</span>
           </div>
         ))}
       </div>
 
       {/* Calendar grid */}
       <div className="flex-1 overflow-auto">
-        <div className="grid grid-rows-[repeat(auto-fill,minmax(120px,1fr))] h-full">
+        <div className="grid grid-rows-[repeat(auto-fill,minmax(80px,1fr))] sm:grid-rows-[repeat(auto-fill,minmax(120px,1fr))] h-full">
           {weeks.map((week, weekIndex) => (
             <div key={weekIndex} className="grid grid-cols-7 border-b border-gray-200 dark:border-gray-700">
               {week.map((day) => {
                 const dayEvents = getEventsForDay(day);
-                const maxVisibleEvents = 3;
+                const maxVisibleEvents = typeof window !== 'undefined' && window.innerWidth < 640 ? 2 : 3;
                 const moreCount = dayEvents.length - maxVisibleEvents;
 
                 return (
@@ -101,13 +103,13 @@ export function MonthView() {
                     onClick={() => handleDayClick(day)}
                     onDoubleClick={() => handleDayDoubleClick(day)}
                     className={cn(
-                      'min-h-[120px] p-1 border-l border-gray-200 dark:border-gray-700 first:border-l-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors',
+                      'min-h-[80px] sm:min-h-[120px] p-0.5 sm:p-1 border-l border-gray-200 dark:border-gray-700 first:border-l-0 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800/50 transition-colors',
                       !isSameMonth(day, currentDate) && 'bg-gray-50 dark:bg-gray-800/30'
                     )}
                   >
                     <div
                       className={cn(
-                        'text-sm font-medium mb-1 w-7 h-7 flex items-center justify-center',
+                        'text-xs sm:text-sm font-medium mb-0.5 sm:mb-1 w-5 h-5 sm:w-7 sm:h-7 flex items-center justify-center',
                         isSameDay(day, today)
                           ? 'bg-blue-600 text-white rounded-full'
                           : isSameMonth(day, currentDate)
@@ -123,24 +125,24 @@ export function MonthView() {
                         <div
                           key={event.id}
                           onClick={(e) => handleEventClick(e, event)}
-                          className="text-xs px-1.5 py-0.5 rounded truncate cursor-pointer hover:opacity-80"
+                          className="text-[10px] sm:text-xs px-1 sm:px-1.5 py-0.5 rounded truncate cursor-pointer hover:opacity-80"
                           style={{ backgroundColor: event.color, color: 'white' }}
                         >
                           {event.isAllDay ? (
                             event.title
                           ) : (
                             <>
-                              <span className="font-medium">
-                                {format(new Date(event.startTime), 'HH:mm')}
-                              </span>{' '}
+                              <span className="font-medium hidden sm:inline">
+                                {format(new Date(event.startTime), 'HH:mm')}{' '}
+                              </span>
                               {event.title}
                             </>
                           )}
                         </div>
                       ))}
                       {moreCount > 0 && (
-                        <div className="text-xs text-gray-500 dark:text-gray-400 px-1.5">
-                          +{moreCount} mais
+                        <div className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 px-1 sm:px-1.5">
+                          +{moreCount}
                         </div>
                       )}
                     </div>

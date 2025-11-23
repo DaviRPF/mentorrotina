@@ -333,11 +333,26 @@ export function SettingsModal() {
       isOpen={isSettingsOpen}
       onClose={handleClose}
       title="Configurações"
-      className="max-w-2xl"
+      className="w-full max-w-2xl"
     >
-      <div className="flex gap-4 -mx-6 -mt-2">
-        {/* Tabs */}
-        <div className="w-48 border-r border-gray-200 dark:border-gray-700 px-2 py-2 flex-shrink-0">
+      <div className="flex flex-col sm:flex-row gap-4 -mx-3 sm:-mx-6 -mt-2">
+        {/* Mobile Tab Selector */}
+        <div className="sm:hidden px-3">
+          <select
+            value={activeTab}
+            onChange={(e) => setActiveTab(e.target.value as TabId)}
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-sm"
+          >
+            {tabs.map((tab) => (
+              <option key={tab.id} value={tab.id}>
+                {tab.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Desktop Tabs */}
+        <div className="hidden sm:block w-48 border-r border-gray-200 dark:border-gray-700 px-2 py-2 flex-shrink-0">
           {tabs.map((tab) => (
             <button
               key={tab.id}
@@ -366,7 +381,7 @@ export function SettingsModal() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 py-2 pr-2 min-h-[400px]">
+        <div className="flex-1 py-2 px-3 sm:px-0 sm:pr-2 min-h-[300px] sm:min-h-[400px]">
           {/* AI Tab */}
           {activeTab === 'ai' && (
             <div className="space-y-6">
@@ -1048,7 +1063,7 @@ export function SettingsModal() {
                   Usado pela IA para sugerir melhores horários
                 </p>
 
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4">
                   <div>
                     <label className="block text-sm text-gray-700 dark:text-gray-300 mb-1">
                       Início
@@ -1087,13 +1102,13 @@ export function SettingsModal() {
                   <label className="block text-sm text-gray-700 dark:text-gray-300 mb-2">
                     Dias de trabalho
                   </label>
-                  <div className="flex gap-1">
+                  <div className="flex flex-wrap gap-1 sm:gap-1">
                     {weekDayLabels.map((label, index) => (
                       <button
                         key={index}
                         onClick={() => toggleWorkingDay(index)}
                         className={cn(
-                          'w-10 h-10 rounded-full text-xs font-medium transition-colors',
+                          'w-9 h-9 sm:w-10 sm:h-10 rounded-full text-xs font-medium transition-colors',
                           workingDays.includes(index)
                             ? 'bg-blue-600 text-white'
                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
@@ -1116,7 +1131,7 @@ export function SettingsModal() {
                   Tema
                 </h3>
 
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-3 gap-1 sm:gap-2">
                   {[
                     { value: 'light', label: 'Claro' },
                     { value: 'dark', label: 'Escuro' },
@@ -1126,7 +1141,7 @@ export function SettingsModal() {
                       key={option.value}
                       onClick={() => updateSettings({ theme: option.value as typeof theme })}
                       className={cn(
-                        'px-4 py-2 text-sm rounded-lg border transition-colors',
+                        'px-2 sm:px-4 py-2 text-sm rounded-lg border transition-colors',
                         theme === option.value
                           ? 'border-blue-500 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
                           : 'border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800'

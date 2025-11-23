@@ -78,8 +78,8 @@ export function Header({ onMenuClick }: HeaderProps) {
   ];
 
   return (
-    <header className="h-16 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-between px-4 gap-4">
-      <div className="flex items-center gap-4">
+    <header className="h-14 sm:h-16 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900 flex items-center justify-between px-2 sm:px-4 gap-1 sm:gap-4">
+      <div className="flex items-center gap-1 sm:gap-4">
         <button
           onClick={onMenuClick}
           className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg lg:hidden"
@@ -91,43 +91,44 @@ export function Header({ onMenuClick }: HeaderProps) {
           MentorRotina
         </h1>
 
-        <Button variant="secondary" size="sm" onClick={goToToday}>
+        <Button variant="secondary" size="sm" onClick={goToToday} className="text-xs sm:text-sm px-2 sm:px-3">
           Hoje
         </Button>
 
-        <div className="flex items-center gap-0.5">
+        <div className="flex items-center gap-0">
           <button
             onClick={goToPreviousWeek}
-            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+            className="p-1 sm:p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full hidden sm:block"
             title="-7 dias"
           >
-            <ChevronsLeft className="w-5 h-5" />
+            <ChevronsLeft className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
           <button
             onClick={goToPreviousDay}
-            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+            className="p-1 sm:p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
             title="-1 dia"
           >
             <ChevronLeft className="w-5 h-5" />
           </button>
           <button
             onClick={goToNextDay}
-            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+            className="p-1 sm:p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
             title="+1 dia"
           >
             <ChevronRight className="w-5 h-5" />
           </button>
           <button
             onClick={goToNextWeek}
-            className="p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full"
+            className="p-1 sm:p-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full hidden sm:block"
             title="+7 dias"
           >
-            <ChevronsRight className="w-5 h-5" />
+            <ChevronsRight className="w-4 h-4 sm:w-5 sm:h-5" />
           </button>
         </div>
 
-        <h2 className="text-lg font-medium text-gray-900 dark:text-white capitalize hidden sm:block">
-          {getTitle()}
+        <h2 className="text-sm sm:text-lg font-medium text-gray-900 dark:text-white capitalize">
+          <span className="hidden sm:inline">{getTitle()}</span>
+          <span className="sm:hidden">{format(currentDate, "MMM yyyy", { locale: ptBR })}</span>
         </h2>
       </div>
 
