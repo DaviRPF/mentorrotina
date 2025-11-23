@@ -7,7 +7,28 @@ interface DayReportViewProps {
   report: DayReport;
 }
 
+// Helper function to safely parse JSON arrays that may come as strings from the database
+function parseArrayField(value: string[] | string | null | undefined): string[] {
+  if (!value) return [];
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 export function DayReportView({ report }: DayReportViewProps) {
+  // Parse all array fields that may come as JSON strings
+  const completedTasks = parseArrayField(report.completedTasks);
+  const skippedTasks = parseArrayField(report.skippedTasks);
+  const highlights = parseArrayField(report.highlights);
+  const challenges = parseArrayField(report.challenges);
+  const insights = parseArrayField(report.insights);
   const getRatingStars = (rating: number | null) => {
     if (!rating) return null;
     return Array.from({ length: 5 }, (_, i) => (
@@ -75,14 +96,14 @@ export function DayReportView({ report }: DayReportViewProps) {
       </div>
 
       {/* Completed Tasks */}
-      {report.completedTasks.length > 0 && (
+      {completedTasks.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2 mb-3">
             <CheckCircle className="w-5 h-5 text-green-500" />
             <h4 className="font-medium text-gray-900 dark:text-white">Concluídos</h4>
           </div>
           <ul className="space-y-2">
-            {report.completedTasks.map((task, i) => (
+            {completedTasks.map((task, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
                 <span className="text-green-500 mt-0.5">✓</span>
                 {task}
@@ -93,14 +114,14 @@ export function DayReportView({ report }: DayReportViewProps) {
       )}
 
       {/* Skipped Tasks */}
-      {report.skippedTasks.length > 0 && (
+      {skippedTasks.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2 mb-3">
             <XCircle className="w-5 h-5 text-red-500" />
             <h4 className="font-medium text-gray-900 dark:text-white">Não realizados</h4>
           </div>
           <ul className="space-y-2">
-            {report.skippedTasks.map((task, i) => (
+            {skippedTasks.map((task, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
                 <span className="text-red-500 mt-0.5">✗</span>
                 {task}
@@ -111,14 +132,14 @@ export function DayReportView({ report }: DayReportViewProps) {
       )}
 
       {/* Highlights */}
-      {report.highlights.length > 0 && (
+      {highlights.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2 mb-3">
             <Star className="w-5 h-5 text-yellow-500" />
             <h4 className="font-medium text-gray-900 dark:text-white">Destaques</h4>
           </div>
           <ul className="space-y-2">
-            {report.highlights.map((highlight, i) => (
+            {highlights.map((highlight, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
                 <span className="text-yellow-500 mt-0.5">★</span>
                 {highlight}
@@ -129,14 +150,14 @@ export function DayReportView({ report }: DayReportViewProps) {
       )}
 
       {/* Challenges */}
-      {report.challenges.length > 0 && (
+      {challenges.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2 mb-3">
             <AlertTriangle className="w-5 h-5 text-orange-500" />
             <h4 className="font-medium text-gray-900 dark:text-white">Desafios</h4>
           </div>
           <ul className="space-y-2">
-            {report.challenges.map((challenge, i) => (
+            {challenges.map((challenge, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
                 <span className="text-orange-500 mt-0.5">!</span>
                 {challenge}
@@ -147,14 +168,14 @@ export function DayReportView({ report }: DayReportViewProps) {
       )}
 
       {/* Insights */}
-      {report.insights.length > 0 && (
+      {insights.length > 0 && (
         <div className="bg-white dark:bg-gray-800 rounded-xl p-4 border border-gray-200 dark:border-gray-700">
           <div className="flex items-center gap-2 mb-3">
             <Lightbulb className="w-5 h-5 text-purple-500" />
             <h4 className="font-medium text-gray-900 dark:text-white">Insights</h4>
           </div>
           <ul className="space-y-2">
-            {report.insights.map((insight, i) => (
+            {insights.map((insight, i) => (
               <li key={i} className="flex items-start gap-2 text-sm text-gray-700 dark:text-gray-300">
                 <span className="text-purple-500 mt-0.5">💡</span>
                 {insight}
