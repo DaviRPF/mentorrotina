@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Send, Loader2, RefreshCw, Sparkles, MessageSquare, ChevronDown, ChevronUp } from 'lucide-react';
 import { useSettingsStore } from '@/store/settings-store';
+import { useEnhancementStore } from '@/store/enhancement-store';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
@@ -14,11 +15,6 @@ interface EventEnhancementProps {
   eventEnd: Date;
 }
 
-interface ChatMessage {
-  role: 'user' | 'assistant';
-  content: string;
-}
-
 export function EventEnhancement({
   eventId,
   eventTitle,
@@ -26,22 +22,28 @@ export function EventEnhancement({
   eventStart,
   eventEnd,
 }: EventEnhancementProps) {
-  const [enhancement, setEnhancement] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isChatOpen, setIsChatOpen] = useState(false);
-  const [context, setContext] = useState<{
-    similarEventsCount: number;
-    relevantReportsCount: number;
-    hasMemories: boolean;
-    hasBooks: boolean;
-  } | null>(null);
 
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const { geminiModel } = useSettingsStore();
+
+  // Use enhancement store for persistence
+  const {
+    getEnhancement,
+    setEnhancement,
+    addChatMessage,
+    clearEnhancement,
+  } = useEnhancementStore();
+
+  // Get stored data for this event
+  const storedData = getEnhancement(eventId);
+  const enhancement = storedData?.enhancement || null;
+  const chatMessages = storedData?.chatMessages || [];
+  const context = storedData?.context || null;
 
   // Scroll to bottom of chat
   useEffect(() => {
@@ -54,7 +56,9 @@ export function EventEnhancement({
   const generateEnhancement = async () => {
     setIsLoading(true);
     setError(null);
-    setChatMessages([]);
+
+    // Clear existing enhancement for regeneration
+    clearEnhancement(eventId);
 
     try {
       const response = await fetch('/api/enhance', {
@@ -76,9 +80,11 @@ export function EventEnhancement({
         throw new Error(data.error || 'Erro ao gerar aperfeiçoamento');
       }
 
-      setEnhancement(data.enhancement);
-      setContext(data.context);
-      setChatMessages([{ role: 'assistant', content: data.enhancement }]);
+      // Store in enhancement store
+      setEnhancement(eventId, {
+        enhancement: data.enhancement,
+        context: data.context,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
     } finally {
@@ -92,7 +98,9 @@ export function EventEnhancement({
 
     const userMessage = input.trim();
     setInput('');
-    setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+
+    // Add user message to store
+    addChatMessage(eventId, { role: 'user', content: userMessage });
     setIsLoading(true);
 
     try {
@@ -117,7 +125,8 @@ export function EventEnhancement({
         throw new Error(data.error || 'Erro ao enviar mensagem');
       }
 
-      setChatMessages(prev => [...prev, { role: 'assistant', content: data.enhancement }]);
+      // Add assistant response to store
+      addChatMessage(eventId, { role: 'assistant', content: data.enhancement });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido');
     } finally {
@@ -133,7 +142,7 @@ export function EventEnhancement({
     }
   };
 
-  // Initial state - show button to generate
+  // Initial state - show button to generate (only if no stored enhancement)
   if (!enhancement && !isLoading && !error) {
     return (
       <div className="flex flex-col items-center justify-center h-full py-8 px-4">
