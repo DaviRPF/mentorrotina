@@ -1,6 +1,7 @@
 import {
   addDays,
   addWeeks,
+  addMonths,
   setHours,
   setMinutes,
   endOfDay,
@@ -28,12 +29,13 @@ HORA ATUAL: {{CURRENT_TIME}}
 Responda APENAS com JSON:
 {
   "hasDeadline": true/false,
-  "deadlineType": "hoje" | "amanha" | "dia_semana" | "data_especifica" | "essa_semana" | "semana_que_vem" | "esse_mes" | "urgente" | null,
+  "deadlineType": "hoje" | "amanha" | "dia_semana" | "data_especifica" | "essa_semana" | "semana_que_vem" | "esse_mes" | "urgente" | "em_x_dias" | "em_x_semanas" | "em_x_meses" | null,
   "dayOfWeek": "segunda" | "terca" | "quarta" | "quinta" | "sexta" | "sabado" | "domingo" | null,
   "day": number | null,
   "month": number | null,
   "hour": number | null,
   "minute": number | null,
+  "quantity": number | null,
   "isUrgent": true/false,
   "cleanContent": "texto sem a parte do prazo"
 }
@@ -41,8 +43,11 @@ Responda APENAS com JSON:
 Exemplos:
 - "comprar leite até amanhã 14h" → {"hasDeadline":true,"deadlineType":"amanha","hour":14,"minute":0,"cleanContent":"comprar leite"}
 - "reunião urgente" → {"hasDeadline":true,"deadlineType":"urgente","isUrgent":true,"cleanContent":"reunião"}
-- "estudar até sexta" → {"hasDeadline":true,"deadlineType":"dia_semana","dayOfWeek":"sexta","hour":23,"minute":59,"cleanContent":"estudar"}
-- "entregar até dia 25" → {"hasDeadline":true,"deadlineType":"data_especifica","day":25,"hour":23,"minute":59,"cleanContent":"entregar"}
+- "estudar até sexta" → {"hasDeadline":true,"deadlineType":"dia_semana","dayOfWeek":"sexta","cleanContent":"estudar"}
+- "entregar até dia 25" → {"hasDeadline":true,"deadlineType":"data_especifica","day":25,"cleanContent":"entregar"}
+- "daqui a 3 semanas, pesquisar sobre X" → {"hasDeadline":true,"deadlineType":"em_x_semanas","quantity":3,"cleanContent":"pesquisar sobre X"}
+- "em 2 dias fazer Y" → {"hasDeadline":true,"deadlineType":"em_x_dias","quantity":2,"cleanContent":"fazer Y"}
+- "em 1 mês revisar Z" → {"hasDeadline":true,"deadlineType":"em_x_meses","quantity":1,"cleanContent":"revisar Z"}
 - "fazer exercício" → {"hasDeadline":false,"cleanContent":"fazer exercício"}`;
 
 const dayNameToNext: Record<string, (date: Date) => Date> = {
@@ -66,7 +71,7 @@ export async function parseDeadline(text: string): Promise<ParsedDeadline> {
   try {
     const response = await callGeminiSimple(
       `${prompt}\n\nTEXTO: "${text}"`,
-      { temperature: 0.1, maxOutputTokens: 256 },
+      {},
       'gemini-2.5-flash'
     );
 
@@ -148,6 +153,32 @@ export async function parseDeadline(text: string): Promise<ParsedDeadline> {
       case 'esse_mes':
         deadline = endOfDay(new Date(now.getFullYear(), now.getMonth() + 1, 0));
         priority = 'low';
+        break;
+
+      case 'em_x_dias':
+        if (parsed.quantity) {
+          deadline = endOfDay(addDays(now, parsed.quantity));
+          if (parsed.quantity <= 1) priority = 'urgent';
+          else if (parsed.quantity <= 3) priority = 'high';
+          else if (parsed.quantity <= 7) priority = 'medium';
+          else priority = 'low';
+        }
+        break;
+
+      case 'em_x_semanas':
+        if (parsed.quantity) {
+          deadline = endOfDay(addWeeks(now, parsed.quantity));
+          if (parsed.quantity <= 1) priority = 'high';
+          else if (parsed.quantity <= 2) priority = 'medium';
+          else priority = 'low';
+        }
+        break;
+
+      case 'em_x_meses':
+        if (parsed.quantity) {
+          deadline = endOfDay(addMonths(now, parsed.quantity));
+          priority = 'low';
+        }
         break;
     }
 
