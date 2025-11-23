@@ -71,17 +71,9 @@ export interface ChatResponse {
 // CONFIGURAÇÕES
 // ============================================================================
 
-const FAST_CONFIG: GeminiConfig = {
-  temperature: 0.1,
-};
-
-const NORMAL_CONFIG: GeminiConfig = {
-  temperature: 0.3,
-};
-
-const LARGE_CONFIG: GeminiConfig = {
-  temperature: 0.3,
-};
+const FAST_CONFIG: GeminiConfig = {};
+const NORMAL_CONFIG: GeminiConfig = {};
+const LARGE_CONFIG: GeminiConfig = {};
 
 // ============================================================================
 // FUNÇÕES PRINCIPAIS

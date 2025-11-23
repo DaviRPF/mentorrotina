@@ -21,11 +21,7 @@ export interface GeminiResponse {
   raw: unknown;
 }
 
-const DEFAULT_CONFIG: GeminiConfig = {
-  temperature: 0.3,
-  topK: 40,
-  topP: 0.95,
-};
+const DEFAULT_CONFIG: GeminiConfig = {};
 
 const SAFETY_SETTINGS = [
   { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
