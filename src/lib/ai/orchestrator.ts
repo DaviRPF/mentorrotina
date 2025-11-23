@@ -3,7 +3,7 @@
  * Coordena o fluxo multi-prompt para garantir respostas consistentes
  */
 
-import { callGeminiSimple, callGeminiWithHistory, GeminiConfig } from './gemini-client';
+import { callGeminiSimple, callGeminiWithHistory, callGeminiWithSystem, GeminiConfig } from './gemini-client';
 import {
   buildFullContext,
   buildFormattedContext,
@@ -97,17 +97,20 @@ async function classifyIntent(
   message: string,
   model: string = 'gemini-2.5-flash'
 ): Promise<ClassificationResult> {
-  const prompt = `${CLASSIFIER_PROMPT}
-
-MENSAGEM DO USUÁRIO: "${message}"`;
-
   console.log('=== CLASSIFIER: Chamando Gemini ===');
-  console.log('Prompt length:', prompt.length);
-  const response = await callGeminiSimple(prompt, FAST_CONFIG, model);
+  console.log('Mensagem:', message);
+
+  // Usa callGeminiWithSystem que tem melhor formato pro Gemini
+  const response = await callGeminiWithSystem(
+    CLASSIFIER_PROMPT,
+    message,
+    FAST_CONFIG,
+    model
+  );
+
   console.log('=== CLASSIFIER: Resposta raw ===');
   console.log(response);
-  // Passa a mensagem original para o classificador de backup caso a IA falhe
-  return parseClassification(response, message);
+  return parseClassification(response);
 }
 
 /**
