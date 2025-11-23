@@ -52,33 +52,46 @@ export async function POST(
       },
     });
 
-    // Preparar contexto da conversa
+    // Preparar contexto da conversa COM HORÁRIOS
     const conversationText = session.conversation?.messages
-      .map(m => `${m.role === 'user' ? 'Usuário' : 'IA'}: ${m.content}`)
+      .map(m => {
+        const time = new Date(m.createdAt).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+        return `[${time}] ${m.role === 'user' ? 'Usuário' : 'IA'}: ${m.content}`;
+      })
       .join('\n\n') || 'Nenhuma conversa registrada';
 
     const eventsText = plannedEvents.length > 0
-      ? plannedEvents.map(e => `- ${e.title} (${new Date(e.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })})`).join('\n')
+      ? plannedEvents.map(e => {
+          const start = new Date(e.startTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          const end = new Date(e.endTime).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+          return `- ${e.title} (${start} - ${end})`;
+        }).join('\n')
       : 'Nenhum evento planejado';
 
     const prompt = `Analise esta conversa de acompanhamento do dia e gere um relatório estruturado.
 
 DATA: ${session.date.toLocaleDateString('pt-BR')}
 
-EVENTOS PLANEJADOS PARA O DIA:
+EVENTOS PLANEJADOS PARA O DIA (com horários):
 ${eventsText}
 
-CONVERSA DE ACOMPANHAMENTO:
+CONVERSA DE ACOMPANHAMENTO (com horários das mensagens):
 ${conversationText}
+
+INSTRUÇÕES IMPORTANTES:
+1. Compare os HORÁRIOS das mensagens do usuário com os HORÁRIOS dos eventos planejados
+2. Identifique se as atividades foram feitas no horário planejado, com atraso, ou adiantadas
+3. Liste o que foi feito e em que horário foi reportado
+4. Liste o que estava planejado mas não foi mencionado como feito
 
 Gere um relatório JSON com a seguinte estrutura:
 {
-  "summary": "Resumo geral do dia em 2-3 frases",
-  "completedTasks": ["lista de tarefas/eventos que foram completados baseado na conversa"],
-  "skippedTasks": ["lista de tarefas/eventos que foram pulados ou não feitos"],
+  "summary": "Resumo geral do dia em 2-3 frases, incluindo observações sobre pontualidade",
+  "completedTasks": ["lista de tarefas completadas COM o horário que foram feitas, ex: 'Academia (feito às 08:30, planejado 08:00)'"],
+  "skippedTasks": ["lista de tarefas planejadas que não foram mencionadas como feitas"],
   "highlights": ["momentos positivos ou conquistas mencionados"],
-  "challenges": ["dificuldades ou problemas enfrentados"],
-  "insights": ["aprendizados ou insights que podem ajudar em dias futuros"],
+  "challenges": ["dificuldades ou problemas enfrentados, incluindo atrasos significativos"],
+  "insights": ["aprendizados sobre gestão de tempo e sugestões para dias futuros"],
   "completedEvents": número de eventos completados,
   "energyLevel": nível de energia percebido (1-5, null se não mencionado),
   "moodRating": humor percebido (1-5, null se não mencionado)

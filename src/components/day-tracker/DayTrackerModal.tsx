@@ -384,6 +384,13 @@ export function DayTrackerModal() {
                     }`}
                   >
                     <p className="whitespace-pre-wrap">{message.content}</p>
+                    <p className={`text-xs mt-1 ${
+                      message.role === 'user'
+                        ? 'text-green-200'
+                        : 'text-gray-400 dark:text-gray-500'
+                    }`}>
+                      {format(new Date(message.createdAt), 'HH:mm')}
+                    </p>
                   </div>
                 </div>
               ))}
