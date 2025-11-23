@@ -76,6 +76,32 @@ export async function POST(request: NextRequest) {
     });
 
     if (existing) {
+      // Se a sessão existe mas não tem conversa, criar uma
+      if (!existing.conversationId) {
+        const conversation = await prisma.conversation.create({
+          data: {
+            title: `Acompanhamento - ${date.toLocaleDateString('pt-BR')}`,
+          },
+        });
+
+        const updatedSession = await prisma.daySession.update({
+          where: { id: existing.id },
+          data: { conversationId: conversation.id },
+          include: {
+            conversation: {
+              include: {
+                messages: {
+                  orderBy: { createdAt: 'asc' },
+                },
+              },
+            },
+            report: true,
+          },
+        });
+
+        return NextResponse.json(updatedSession);
+      }
+
       return NextResponse.json(existing);
     }
 

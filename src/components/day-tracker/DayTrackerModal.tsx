@@ -15,6 +15,7 @@ export function DayTrackerModal() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showReport, setShowReport] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const {
     isOpen,
@@ -34,7 +35,14 @@ export function DayTrackerModal() {
   // Fetch or create session when opened
   useEffect(() => {
     if (isOpen && selectedDate && !currentSession) {
-      fetchOrCreateSession(selectedDate);
+      setError(null);
+      fetchOrCreateSession(selectedDate).then((session) => {
+        if (!session) {
+          setError('Não foi possível criar a sessão. Tente novamente.');
+        } else if (!session.conversationId) {
+          setError('Sessão sem conversa associada. Tente fechar e abrir novamente.');
+        }
+      });
     }
   }, [isOpen, selectedDate, currentSession, fetchOrCreateSession]);
 
@@ -66,15 +74,18 @@ export function DayTrackerModal() {
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    console.log('handleSubmit called', { input: input.trim(), isLoading, currentSession, conversationId: currentSession?.conversationId });
-    if (!input.trim() || isLoading || !currentSession?.conversationId) {
-      console.log('Blocked by condition', { hasInput: !!input.trim(), isLoading, hasConversationId: !!currentSession?.conversationId });
+
+    if (!input.trim() || isLoading) return;
+
+    if (!currentSession?.conversationId) {
+      setError('Sessão não inicializada. Tente fechar e abrir novamente.');
       return;
     }
 
     const userMessage = input.trim();
     setInput('');
     setIsLoading(true);
+    setError(null);
 
     // Add user message to UI
     const userMsg: Message = {
@@ -86,11 +97,15 @@ export function DayTrackerModal() {
     addMessageToSession(userMsg);
 
     // Save user message to DB
-    await fetch(`/api/conversations/${currentSession.conversationId}/messages`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ role: 'user', content: userMessage }),
-    });
+    try {
+      await fetch(`/api/conversations/${currentSession.conversationId}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: 'user', content: userMessage }),
+      });
+    } catch (err) {
+      console.error('Error saving user message:', err);
+    }
 
     try {
       // Build context for AI
@@ -146,11 +161,13 @@ export function DayTrackerModal() {
           body: JSON.stringify({ role: 'assistant', content: data.response }),
         });
       } else {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({}));
         console.error('Chat API error:', response.status, errorData);
+        setError('Erro na resposta da IA. Tente novamente.');
       }
     } catch (error) {
       console.error('Error sending message:', error);
+      setError('Erro ao enviar mensagem. Tente novamente.');
     } finally {
       setIsLoading(false);
     }
@@ -222,12 +239,42 @@ export function DayTrackerModal() {
           <div className="flex-1 flex items-center justify-center">
             <Loader2 className="w-8 h-8 animate-spin text-green-500" />
           </div>
+        ) : error ? (
+          <div className="flex-1 flex items-center justify-center p-4">
+            <div className="text-center">
+              <p className="text-red-500 mb-4">{error}</p>
+              <button
+                onClick={() => {
+                  setError(null);
+                  if (selectedDate) {
+                    fetchOrCreateSession(selectedDate);
+                  }
+                }}
+                className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700"
+              >
+                Tentar novamente
+              </button>
+            </div>
+          </div>
         ) : showReport && currentSession?.report ? (
           <DayReportView report={currentSession.report} />
         ) : (
           <>
             {/* Messages */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Error banner */}
+              {error && (
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3 flex items-center justify-between">
+                  <span className="text-red-700 dark:text-red-300 text-sm">{error}</span>
+                  <button
+                    onClick={() => setError(null)}
+                    className="text-red-500 hover:text-red-700"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+
               {/* Welcome message if no messages */}
               {(!currentSession?.conversation?.messages || currentSession.conversation.messages.length === 0) && (
                 <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border border-green-200 dark:border-green-800">
