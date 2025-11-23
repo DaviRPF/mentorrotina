@@ -866,6 +866,11 @@ export function ChatSidebar() {
                 ? calendars.find(c => c.id === action.data.calendarId)?.name
                 : calendars[0]?.name;
 
+              // For update/move actions, find the original event
+              const originalEvent = (action.type === 'update' || action.type === 'move' || action.type === 'delete') && action.data.eventId
+                ? events.find(e => e.id === action.data.eventId || e.id.startsWith(action.data.eventId))
+                : null;
+
               return (
                 <div
                   key={action.id}
@@ -1080,8 +1085,59 @@ export function ChatSidebar() {
                   {/* Expanded details (view mode) */}
                   {isExpanded && editingActionId !== action.id && (
                     <div className="px-3 pb-3 pt-1 border-t border-gray-100 dark:border-gray-700 space-y-2 text-xs">
-                      {/* Title & Description */}
-                      {action.data.title && (
+                      {/* For update/move/delete: Show original event info */}
+                      {(action.type === 'update' || action.type === 'move' || action.type === 'delete') && originalEvent && (
+                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-2 mb-2">
+                          <div className="text-gray-500 dark:text-gray-400 font-medium mb-1">
+                            {action.type === 'delete' ? '🗑️ Evento a ser excluído:' : '📝 Evento original:'}
+                          </div>
+                          <div className="text-gray-700 dark:text-gray-300">
+                            <div><strong>{originalEvent.title}</strong></div>
+                            <div className="text-gray-500">
+                              {format(new Date(originalEvent.startTime), "EEE, d/MM 'às' HH:mm", { locale: ptBR })}
+                              {originalEvent.endTime && ` - ${format(new Date(originalEvent.endTime), 'HH:mm')}`}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* For update/move: Show what will change */}
+                      {(action.type === 'update' || action.type === 'move') && originalEvent && (
+                        <div className="bg-green-50 dark:bg-green-900/20 rounded-lg p-2 mb-2">
+                          <div className="text-green-700 dark:text-green-400 font-medium mb-1">✨ Alterações:</div>
+                          <div className="space-y-1 text-gray-700 dark:text-gray-300">
+                            {action.data.title && action.data.title !== originalEvent.title && (
+                              <div>
+                                <span className="text-gray-500">Título: </span>
+                                <span className="line-through text-red-500 mr-1">{originalEvent.title}</span>
+                                <span className="text-green-600">→ {action.data.title}</span>
+                              </div>
+                            )}
+                            {action.data.startTime && (
+                              <div>
+                                <span className="text-gray-500">Horário: </span>
+                                <span className="line-through text-red-500 mr-1">
+                                  {format(new Date(originalEvent.startTime), 'HH:mm')}
+                                  {originalEvent.endTime && `-${format(new Date(originalEvent.endTime), 'HH:mm')}`}
+                                </span>
+                                <span className="text-green-600">
+                                  → {format(new Date(action.data.startTime), 'HH:mm')}
+                                  {action.data.endTime && `-${format(new Date(action.data.endTime), 'HH:mm')}`}
+                                </span>
+                              </div>
+                            )}
+                            {action.data.description && action.data.description !== originalEvent.description && (
+                              <div>
+                                <span className="text-gray-500">Descrição: </span>
+                                <span className="text-green-600">{action.data.description}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Title & Description - only for create actions */}
+                      {action.type === 'create' && action.data.title && (
                         <div className="flex items-start gap-2">
                           <Calendar className="w-3.5 h-3.5 text-gray-400 mt-0.5" />
                           <div>
@@ -1091,7 +1147,7 @@ export function ChatSidebar() {
                         </div>
                       )}
 
-                      {action.data.description && (
+                      {action.type === 'create' && action.data.description && (
                         <div className="flex items-start gap-2">
                           <span className="text-gray-400 text-sm ml-0.5">📝</span>
                           <div>
@@ -1101,8 +1157,8 @@ export function ChatSidebar() {
                         </div>
                       )}
 
-                      {/* Date/Time */}
-                      {action.data.startTime && (
+                      {/* Date/Time - only for create actions */}
+                      {action.type === 'create' && action.data.startTime && (
                         <div className="flex items-center gap-2">
                           <Clock className="w-3.5 h-3.5 text-gray-400" />
                           <div>
@@ -1115,8 +1171,8 @@ export function ChatSidebar() {
                         </div>
                       )}
 
-                      {/* Color */}
-                      {colorName && (
+                      {/* Color - only for create actions */}
+                      {action.type === 'create' && colorName && (
                         <div className="flex items-center gap-2">
                           <Palette className="w-3.5 h-3.5 text-gray-400" />
                           <div className="flex items-center gap-1.5">
@@ -1130,8 +1186,8 @@ export function ChatSidebar() {
                         </div>
                       )}
 
-                      {/* Calendar */}
-                      {calendarName && (
+                      {/* Calendar - only for create actions */}
+                      {action.type === 'create' && calendarName && (
                         <div className="flex items-center gap-2">
                           <Calendar className="w-3.5 h-3.5 text-gray-400" />
                           <div>
@@ -1141,8 +1197,8 @@ export function ChatSidebar() {
                         </div>
                       )}
 
-                      {/* Recurrence */}
-                      {recurrence && (
+                      {/* Recurrence - only for create actions */}
+                      {action.type === 'create' && recurrence && (
                         <div className="flex items-center gap-2">
                           <Repeat className="w-3.5 h-3.5 text-gray-400" />
                           <div>
@@ -1152,8 +1208,8 @@ export function ChatSidebar() {
                         </div>
                       )}
 
-                      {/* Reminder */}
-                      {reminder && (
+                      {/* Reminder - only for create actions */}
+                      {action.type === 'create' && reminder && (
                         <div className="flex items-center gap-2">
                           <Bell className="w-3.5 h-3.5 text-gray-400" />
                           <div>
@@ -1163,8 +1219,8 @@ export function ChatSidebar() {
                         </div>
                       )}
 
-                      {/* All day */}
-                      {action.data.isAllDay && (
+                      {/* All day - only for create actions */}
+                      {action.type === 'create' && action.data.isAllDay && (
                         <div className="flex items-center gap-2">
                           <span className="text-gray-400 text-sm ml-0.5">☀️</span>
                           <span className="text-gray-900 dark:text-white">Evento de dia inteiro</span>
