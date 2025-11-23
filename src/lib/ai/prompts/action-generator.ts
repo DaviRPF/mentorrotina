@@ -25,51 +25,32 @@ export interface CalendarAction {
 
 export const ACTION_GENERATOR_PROMPT = `Você é um gerador de ações JSON para calendário.
 
-ENTRADA: Descrição do mentor sobre o que fazer (criar, deletar, mover, atualizar eventos)
+ENTRADA: Descrição do mentor + lista de EVENTOS EXISTENTES com IDs
 SAÍDA: Array JSON de ações
+
+IMPORTANTE: Para DELETE/MOVE/UPDATE, encontre o evento correspondente na lista de EVENTOS EXISTENTES e use o ID correto.
 
 TIPOS DE AÇÕES:
 
 1. CRIAR evento:
-{"type":"create","description":"Título - DD/MM HH:MM","data":{"title":"Título","startTime":"YYYY-MM-DDTHH:MM:00","endTime":"YYYY-MM-DDTHH:MM:00","color":"#3b82f6","calendarId":"ID","isAllDay":false,"reminderMinutes":15}}
+{"type":"create","description":"Título - DD/MM","data":{"title":"Título","startTime":"YYYY-MM-DDTHH:MM:00","endTime":"YYYY-MM-DDTHH:MM:00","color":"#3b82f6","calendarId":"ID","isAllDay":false,"reminderMinutes":15}}
 
-2. DELETAR evento (quando menciona "remover", "deletar", "apagar" ou lista com 🗑️):
-{"type":"delete","description":"Deletar Título","data":{"eventId":"ID_DO_EVENTO"}}
+2. DELETAR evento (🗑️ ou "remover/deletar/apagar"):
+{"type":"delete","description":"Deletar Título","data":{"eventId":"ID_DO_EVENTO_DA_LISTA"}}
 
-3. MOVER evento:
-{"type":"move","description":"Mover Título","data":{"eventId":"ID_DO_EVENTO","startTime":"YYYY-MM-DDTHH:MM:00","endTime":"YYYY-MM-DDTHH:MM:00"}}
+3. MOVER evento (📦):
+{"type":"move","description":"Mover Título","data":{"eventId":"ID_DO_EVENTO_DA_LISTA","startTime":"NOVO_HORARIO","endTime":"NOVO_HORARIO"}}
 
-4. ATUALIZAR evento:
-{"type":"update","description":"Atualizar Título","data":{"eventId":"ID_DO_EVENTO","title":"Novo título"}}
-
-CORES DISPONÍVEIS:
-- Azul: #3b82f6 (padrão)
-- Vermelho: #ef4444
-- Verde: #22c55e
-- Amarelo: #eab308
-- Roxo: #a855f7
-- Rosa: #ec4899
-- Laranja: #f97316
-- Teal: #14b8a6
+4. ATUALIZAR evento (✏️):
+{"type":"update","description":"Atualizar Título","data":{"eventId":"ID_DO_EVENTO_DA_LISTA","title":"Novo título"}}
 
 REGRAS:
-1. Extraia TODAS as ações mencionadas (criar, deletar, mover, atualizar)
-2. Para DELETE: use o eventId exato fornecido no contexto
-3. Responda APENAS com o array JSON, sem explicações
+1. Para DELETE: encontre cada evento mencionado na lista de EVENTOS EXISTENTES pelo título/data e use o eventId correto
+2. Se o mentor menciona "Musculação Push (24/11)", encontre na lista de eventos existentes o evento com título similar e data 24/11, e use o ID dele
+3. Responda APENAS com o array JSON
 
-EXEMPLO 1 - CRIAR:
-Entrada: "Segunda, 24/11: 07:00-08:30 - Musculação (Push)"
-Saída: [{"type":"create","description":"Musculação (Push) - 24/11","data":{"title":"Musculação (Push)","startTime":"2025-11-24T07:00:00","endTime":"2025-11-24T08:30:00","color":"#22c55e","calendarId":"ID","isAllDay":false,"reminderMinutes":15}}]
-
-EXEMPLO 2 - DELETAR:
-Entrada: "🗑️ Eventos a remover:
-- "Musculação (Push)" em 24/11 às 07:00 | ID: abc-123
-- "Cardio" em 24/11 às 17:00 | ID: def-456"
-Saída: [{"type":"delete","description":"Deletar Musculação (Push)","data":{"eventId":"abc-123"}},{"type":"delete","description":"Deletar Cardio","data":{"eventId":"def-456"}}]
-
-EXEMPLO 3 - MOVER:
-Entrada: "📦 Mover Reunião de 09:00 para 14:00 | ID: ghi-789"
-Saída: [{"type":"move","description":"Mover Reunião","data":{"eventId":"ghi-789","startTime":"2025-11-24T14:00:00","endTime":"2025-11-24T15:00:00"}}]`;
+EXEMPLO - DELETAR (mentor diz "remover Musculação Push 24/11" e na lista existe "Musculação Push" com ID abc-123):
+Saída: [{"type":"delete","description":"Deletar Musculação Push","data":{"eventId":"abc-123"}}]`;
 
 /**
  * Extrai ações da resposta da IA

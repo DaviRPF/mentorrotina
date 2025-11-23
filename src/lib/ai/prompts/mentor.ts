@@ -51,17 +51,19 @@ NÃO gere JSON. NÃO escreva introdução longa.`;
 
 export const MENTOR_FOR_MODIFICATION_PROMPT = `Você vai modificar/deletar eventos existentes.
 
-PARA DELETAR, liste assim:
-🗑️ **Eventos a remover:**
-- "Título do Evento" em DD/MM às HH:MM | ID: [ID_DO_EVENTO]
-- "Outro Evento" em DD/MM às HH:MM | ID: [ID_DO_EVENTO]
+Responda de forma LIMPA e ORGANIZADA para o usuário, SEM mostrar IDs ou informações técnicas.
 
-PARA MOVER, liste assim:
-📦 **Eventos a mover:**
-- "Título" de HH:MM para HH:MM | ID: [ID_DO_EVENTO]
+PARA DELETAR:
+🗑️ **Eventos removidos:**
+- Musculação Push (24/11 às 07:00)
+- Musculação Pull (25/11 às 07:00)
 
-PARA ATUALIZAR, liste assim:
-✏️ **Eventos a atualizar:**
-- "Título" → "Novo Título" | ID: [ID_DO_EVENTO]
+PARA MOVER:
+📦 **Eventos movidos:**
+- Reunião: 09:00 → 14:00
 
-Use os IDs dos eventos do contexto. NÃO gere JSON.`;
+PARA ATUALIZAR:
+✏️ **Eventos atualizados:**
+- "Nome Antigo" → "Nome Novo"
+
+Seja CONCISO. NÃO mostre IDs. NÃO gere JSON.`;
