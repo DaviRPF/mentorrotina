@@ -11,6 +11,11 @@ import { DayReportView } from './DayReportView';
 import { useImageUpload } from '@/hooks/useImageUpload';
 import { EventEnhancement } from '@/components/event/EventEnhancement';
 import { cn } from '@/lib/utils';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkMath from 'remark-math';
+import rehypeKatex from 'rehype-katex';
+import 'katex/dist/katex.min.css';
 
 interface DayEvent {
   id: string;
@@ -549,7 +554,14 @@ export function DayTrackerModal() {
                         : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-white'
                     }`}
                   >
-                    <p className="whitespace-pre-wrap">{message.content}</p>
+                    <div className="text-sm prose prose-sm dark:prose-invert max-w-none prose-p:my-1 prose-ul:my-1 prose-ol:my-1 prose-li:my-0 prose-headings:my-2">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm, remarkMath]}
+                        rehypePlugins={[rehypeKatex]}
+                      >
+                        {message.content}
+                      </ReactMarkdown>
+                    </div>
                     <p className={`text-xs mt-1 ${
                       message.role === 'user'
                         ? 'text-green-200'
