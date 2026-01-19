@@ -319,9 +319,11 @@ export function ChatSidebar() {
   }, [addImage]);
 
   const handleSend = async () => {
+    console.log('🚀 [CHAT DEBUG] handleSend called! Input:', input.substring(0, 50));
     if ((!input.trim() && images.length === 0) || isLoading) return;
 
     const userMessage = input.trim() || (images.length > 0 ? '[Imagem enviada]' : '');
+    console.log('🚀 [CHAT DEBUG] userMessage:', userMessage.substring(0, 50));
     const imagesToSend = images.map(img => ({ base64: img.base64, mimeType: img.mimeType }));
 
     setInput('');
@@ -329,10 +331,12 @@ export function ChatSidebar() {
     setIsLoading(true);
     setError(null);
 
+    console.log('🚀 [CHAT DEBUG] About to save message and call API');
     // Save user message to database
     await addDbMessage('user', userMessage);
 
     try {
+      console.log('🚀 [CHAT DEBUG] Calling /api/chat...');
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -359,6 +363,7 @@ export function ChatSidebar() {
       });
 
       const data = await response.json();
+      console.log('🚀 [CHAT DEBUG] Got response from /api/chat:', !!data.response, 'actions:', data.actions?.length || 0);
 
       if (!response.ok) {
         throw new Error(data.error || 'Erro ao enviar mensagem');
@@ -375,7 +380,10 @@ export function ChatSidebar() {
         addPendingActions(data.actions);
       }
 
+      console.log('🚀 [CHAT DEBUG] About to analyze memories...');
       // Analyze user message for personal info (memories)
+      console.log('🧠 [MEMORY DEBUG] Starting memory analysis for:', userMessage);
+      console.log('🧠 [MEMORY DEBUG] Current memories count:', memories.length);
       try {
         const memoryResponse = await fetch('/api/memories/analyze', {
           method: 'POST',
@@ -387,10 +395,16 @@ export function ChatSidebar() {
           }),
         });
 
+        console.log('🧠 [MEMORY DEBUG] Response status:', memoryResponse.status, memoryResponse.ok);
+
         if (memoryResponse.ok) {
           const memoryData = await memoryResponse.json();
-          console.log('Memory analysis result:', memoryData);
+          console.log('🧠 [MEMORY DEBUG] Response data:', memoryData);
+          console.log('🧠 [MEMORY DEBUG] Actions array:', memoryData.actions);
+          console.log('🧠 [MEMORY DEBUG] Actions count:', memoryData.actions?.length || 0);
+
           if (memoryData.actions && memoryData.actions.length > 0) {
+            console.log('🧠 [MEMORY DEBUG] ✅ Has actions! Processing...');
             // Enrich actions with currentContent if missing (for updates)
             const enrichedActions = memoryData.actions.map((action: { type: string; memoryId?: string; currentContent?: string }) => {
               if (action.type === 'update' && action.memoryId && !action.currentContent) {
@@ -401,14 +415,19 @@ export function ChatSidebar() {
               }
               return action;
             });
+            console.log('🧠 [MEMORY DEBUG] Enriched actions:', enrichedActions);
             clearPendingMemoryActions();
             addPendingMemoryActions(enrichedActions);
+            console.log('🧠 [MEMORY DEBUG] ✅ Added to store! Check getPendingMemoryActions()');
+          } else {
+            console.log('🧠 [MEMORY DEBUG] ❌ No actions returned');
           }
         } else {
-          console.error('Memory analysis failed:', memoryResponse.status, await memoryResponse.text());
+          const errorText = await memoryResponse.text();
+          console.error('🧠 [MEMORY DEBUG] ❌ API failed:', memoryResponse.status, errorText);
         }
       } catch (memErr) {
-        console.error('Memory analysis error:', memErr);
+        console.error('🧠 [MEMORY DEBUG] ❌ Exception:', memErr);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro desconhecido');

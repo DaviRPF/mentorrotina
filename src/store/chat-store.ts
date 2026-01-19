@@ -2,6 +2,19 @@
 
 import { create } from 'zustand';
 
+// Helper function to generate UUID (works in HTTP too)
+function generateId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // Fallback for HTTP contexts
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = Math.random() * 16 | 0;
+    const v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -98,7 +111,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   addMessage: (message) => {
     const newMessage: ChatMessage = {
       ...message,
-      id: crypto.randomUUID(),
+      id: generateId(),
       timestamp: new Date(),
     };
     set((state) => ({
@@ -119,7 +132,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   addPendingActions: (actions) => {
     const newActions: PendingAction[] = actions.map((action) => ({
       ...action,
-      id: crypto.randomUUID(),
+      id: generateId(),
       status: 'pending',
     }));
     set((state) => ({
@@ -177,7 +190,7 @@ export const useChatStore = create<ChatStore>((set, get) => ({
   addPendingMemoryActions: (actions) => {
     const newActions: PendingMemoryAction[] = actions.map((action) => ({
       ...action,
-      id: crypto.randomUUID(),
+      id: generateId(),
       status: 'pending',
     }));
     set((state) => ({

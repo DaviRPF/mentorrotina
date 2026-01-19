@@ -45,3 +45,8 @@ next-env.d.ts
 # database
 *.db
 *.db-journal
+
+# PM2 logs
+logs/
+*.log
+.pm2/

@@ -345,6 +345,9 @@ async function processDayTracker(
   const booksText = formatBooksContext(context);
   const goalsText = formatGoalsContext(context);
 
+  // Log do horário atual para debug
+  console.log('=== DAY TRACKER: Horário atual ===', context.currentTime, new Date().toLocaleTimeString('pt-BR'));
+
   // Constrói o prompt do day tracker com TODO o contexto
   const prompt = buildDayTrackerPrompt(
     dayTrackerContext.date || context.today,

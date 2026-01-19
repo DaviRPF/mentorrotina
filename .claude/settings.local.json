@@ -1,0 +1,14 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pm2:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run pm2:start:*)",
+      "Bash(timeout 5 pm2 logs:*)",
+      "Bash(curl:*)",
+      "Bash(npm run pm2:restart:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

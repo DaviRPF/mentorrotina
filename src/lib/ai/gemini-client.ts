@@ -14,6 +14,7 @@ export interface GeminiConfig {
   topK?: number;
   topP?: number;
   maxOutputTokens?: number;
+  disableThinking?: boolean; // Disable thinking mode for simple tasks
 }
 
 export interface GeminiResponse {
@@ -44,18 +45,29 @@ export async function callGemini(
     throw new Error('GEMINI_API_KEY não configurada. Adicione no arquivo .env');
   }
 
-  const mergedConfig = { ...DEFAULT_CONFIG, ...config };
+  const { disableThinking, ...generationConfig } = { ...DEFAULT_CONFIG, ...config };
+
+  // Build request body
+  const requestBody: Record<string, unknown> = {
+    contents,
+    generationConfig,
+    safetySettings: SAFETY_SETTINGS,
+  };
+
+  // Disable thinking mode if requested (prevents MAX_TOKENS on simple tasks)
+  if (disableThinking) {
+    requestBody.generationConfig = {
+      ...generationConfig,
+      thinkingConfig: { thinkingBudget: 0 },
+    };
+  }
 
   const response = await fetch(
     `${GEMINI_API_URL}/${model}:generateContent?key=${apiKey}`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents,
-        generationConfig: mergedConfig,
-        safetySettings: SAFETY_SETTINGS,
-      }),
+      body: JSON.stringify(requestBody),
     }
   );
 
@@ -121,7 +133,7 @@ export async function callGeminiWithSystem(
  */
 export async function callGeminiWithHistory(
   systemPrompt: string,
-  history: Array<{ role: string; content: string }>,
+  history: Array<{ role: string; content: string; timestamp?: string }>,
   userMessage: string,
   images: Array<{ base64: string; mimeType: string }> = [],
   config: GeminiConfig = {},
@@ -145,10 +157,14 @@ export async function callGeminiWithHistory(
   const contents: GeminiMessage[] = [
     { role: 'user', parts: [{ text: systemPrompt }] },
     { role: 'model', parts: [{ text: 'Entendido!' }] },
-    // Map history (limit to last 20 messages)
+    // Map history (limit to last 20 messages) with timestamps
     ...history.slice(-20).map((msg) => ({
       role: (msg.role === 'assistant' ? 'model' : 'user') as 'user' | 'model',
-      parts: [{ text: msg.content }],
+      parts: [{
+        text: msg.timestamp
+          ? `[${msg.timestamp}] ${msg.content}`
+          : msg.content
+      }],
     })),
     { role: 'user', parts: userMessageParts },
   ];

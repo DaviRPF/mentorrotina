@@ -191,7 +191,11 @@ export function DayTrackerModal() {
         : '';
 
       const history = currentSession.conversation?.messages
-        .map(m => ({ role: m.role, content: m.content })) || [];
+        .map(m => ({
+          role: m.role,
+          content: m.content,
+          timestamp: format(new Date(m.createdAt), 'HH:mm')
+        })) || [];
 
       // Call chat API with day tracker context
       const response = await fetch('/api/chat', {

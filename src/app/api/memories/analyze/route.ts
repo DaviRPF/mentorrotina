@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     const prompt = buildMemoryAnalyzerPrompt(message, memories || []);
-    const response = await callGeminiSimple(prompt, { temperature: 0.1, maxOutputTokens: 2048 }, model);
+    const response = await callGeminiSimple(prompt, { disableThinking: true }, model);
 
     console.log('Memory analyze - Message:', message.substring(0, 100));
     console.log('Memory analyze - Response:', response);

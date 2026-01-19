@@ -61,6 +61,15 @@ export function buildDayTrackerPrompt(
 
 === CONTEXTO COMPLETO ===
 
+🕐 **HORÁRIO ATUAL NESTE EXATO MOMENTO: ${currentTime}**
+
+ATENÇÃO CRÍTICA SOBRE HORÁRIOS:
+- Você receberá mensagens do histórico no formato: [HH:MM] mensagem
+- Esses horários [HH:MM] indicam quando cada mensagem foi enviada NO PASSADO
+- O ÚNICO horário válido para suas respostas é o atual: ${currentTime}
+- Quando o usuário disser "agora", "neste momento", "acabei de", refere-se a ${currentTime}
+- Use os horários do histórico apenas para CONTEXTO (ex: "você disse às 07:00 que...", "já se passaram X horas desde...")
+
 DATA: ${date}
 HORA ATUAL: ${currentTime}
 
